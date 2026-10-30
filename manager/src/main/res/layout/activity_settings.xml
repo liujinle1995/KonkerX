@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    设置页。
+
+    内容区是 GridLayout，列数取自 @integer/settings_columns（手机 1 列，≥840dp 时 2 列）。
+    用 GridLayout 而不是「手机一份布局、平板再复制一份」的理由：两份 XML 里的
+    卡片很快会长得不一样 —— 加一个新的分组，总有一次只加在手机上。
+    代价是每张卡片都要写 columnWeight，换来的是永远只有一个真源。
+
+    分组小标题（外观 / 存储 / 诊断 / 清理 / 关于 / 支持）用 columnSpan 占满整行：
+    它们描述的是下面一整组，跟着某一列走会让「这两张卡是一类」这件事读不出来。
+-->
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -24,7 +35,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintWidth_max="@dimen/text_max_width"
+                app:layout_constraintWidth_max="@dimen/content_max_width"
                 app:navigationContentDescription="@string/close"
                 app:navigationIcon="@drawable/ic_close"
                 app:title="@string/settings" />
@@ -45,209 +56,256 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintWidth_max="@dimen/text_max_width">
+            app:layout_constraintWidth_max="@dimen/content_max_width">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingHorizontal="@dimen/space_3">
-
-            <TextView
+            <!--
+                GridLayout 用原生的 android.widget.GridLayout 而不是 androidx 版本：
+                列权重（layout_columnWeight）API 21 起就在原生里了，本项目 minSdk 31，
+                没必要为一个已经内置的控件多引一个依赖。
+            -->
+            <GridLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/space_2"
-                android:layout_marginTop="@dimen/space_3"
-                android:layout_marginBottom="@dimen/space_2"
-                android:text="@string/section_appearance"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textColor="?attr/colorPrimary" />
+                android:columnCount="@integer/settings_columns"
+                android:paddingHorizontal="@dimen/space_3"
+                android:useDefaultMargins="false">
 
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                app:strokeWidth="1dp">
-
-                <include
-                    android:id="@+id/themeCard"
-                    layout="@layout/view_theme_selector" />
-            </com.google.android.material.card.MaterialCardView>
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_3"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                app:strokeWidth="1dp">
-
-                <include
-                    android:id="@+id/indexSizeCard"
-                    layout="@layout/view_index_size_selector" />
-            </com.google.android.material.card.MaterialCardView>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginTop="@dimen/space_5"
-                android:layout_marginBottom="@dimen/space_2"
-                android:text="@string/section_storage"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textColor="?attr/colorPrimary" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                app:strokeWidth="1dp">
-
-                <include
-                    android:id="@+id/rowCache"
-                    layout="@layout/item_setting_row" />
-            </com.google.android.material.card.MaterialCardView>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginTop="@dimen/space_5"
-                android:layout_marginBottom="@dimen/space_2"
-                android:text="@string/section_diagnostics"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textColor="?attr/colorPrimary" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                app:strokeWidth="1dp">
-
-                <include
-                    android:id="@+id/rowLog"
-                    layout="@layout/item_setting_row" />
-            </com.google.android.material.card.MaterialCardView>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginTop="@dimen/space_5"
-                android:layout_marginBottom="@dimen/space_2"
-                android:text="@string/section_reset"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textColor="?attr/colorPrimary" />
-
-            <!-- 卸载本应用时把分身一起带走：分身是独立 APK，不清理就会留在系统里 -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <!-- ======================= 外观 ======================= -->
+                <TextView
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:layout_columnSpan="@integer/settings_columns"
+                    android:layout_columnWeight="1"
+                    android:layout_marginStart="@dimen/space_2"
+                    android:layout_marginTop="@dimen/space_3"
+                    android:layout_marginBottom="@dimen/space_2"
+                    android:text="@string/section_appearance"
+                    android:textAppearance="?attr/textAppearanceLabelLarge"
+                    android:textColor="?attr/colorPrimary" />
 
-                    <include
-                        android:id="@+id/rowPurge"
-                        layout="@layout/item_setting_row" />
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:layout_marginStart="16dp"
-                        android:background="?attr/colorOutlineVariant" />
-
-                    <include
-                        android:id="@+id/rowUninstall"
-                        layout="@layout/item_setting_row" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginTop="@dimen/space_5"
-                android:layout_marginBottom="@dimen/space_2"
-                android:text="@string/section_about"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textColor="?attr/colorPrimary" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:layout_columnWeight="1"
+                    android:layout_marginStart="@dimen/space_1"
+                    android:layout_marginEnd="@dimen/space_1"
+                    app:cardCornerRadius="@dimen/radius_md"
+                    app:cardElevation="0dp"
+                    app:strokeColor="?attr/colorOutlineVariant"
+                    app:strokeWidth="@dimen/stroke_width">
 
-                    <!-- 版本号与更新记录合并成一行：点进去就是该版本的完整变更 -->
                     <include
-                        android:id="@+id/rowUpdate"
-                        layout="@layout/item_setting_row" />
+                        android:id="@+id/themeCard"
+                        layout="@layout/view_theme_selector" />
+                </com.google.android.material.card.MaterialCardView>
 
-                    <View
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_marginStart="@dimen/space_1"
+                    android:layout_marginEnd="@dimen/space_1"
+                    android:layout_marginTop="@dimen/space_3"
+                    app:cardCornerRadius="@dimen/radius_md"
+                    app:cardElevation="0dp"
+                    app:strokeColor="?attr/colorOutlineVariant"
+                    app:strokeWidth="@dimen/stroke_width">
+
+                    <include
+                        android:id="@+id/indexSizeCard"
+                        layout="@layout/view_index_size_selector" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- ======================= 存储 ======================= -->
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnSpan="@integer/settings_columns"
+                    android:layout_columnWeight="1"
+                    android:layout_marginStart="@dimen/space_2"
+                    android:layout_marginTop="@dimen/space_5"
+                    android:layout_marginBottom="@dimen/space_2"
+                    android:text="@string/section_storage"
+                    android:textAppearance="?attr/textAppearanceLabelLarge"
+                    android:textColor="?attr/colorPrimary" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_marginStart="@dimen/space_1"
+                    android:layout_marginEnd="@dimen/space_1"
+                    app:cardCornerRadius="@dimen/radius_md"
+                    app:cardElevation="0dp"
+                    app:strokeColor="?attr/colorOutlineVariant"
+                    app:strokeWidth="@dimen/stroke_width">
+
+                    <include
+                        android:id="@+id/rowCache"
+                        layout="@layout/item_setting_row" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- ======================= 诊断 ======================= -->
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnSpan="@integer/settings_columns"
+                    android:layout_columnWeight="1"
+                    android:layout_marginStart="@dimen/space_2"
+                    android:layout_marginTop="@dimen/space_5"
+                    android:layout_marginBottom="@dimen/space_2"
+                    android:text="@string/section_diagnostics"
+                    android:textAppearance="?attr/textAppearanceLabelLarge"
+                    android:textColor="?attr/colorPrimary" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_marginStart="@dimen/space_1"
+                    android:layout_marginEnd="@dimen/space_1"
+                    app:cardCornerRadius="@dimen/radius_md"
+                    app:cardElevation="0dp"
+                    app:strokeColor="?attr/colorOutlineVariant"
+                    app:strokeWidth="@dimen/stroke_width">
+
+                    <include
+                        android:id="@+id/rowLog"
+                        layout="@layout/item_setting_row" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- ======================= 清理 ======================= -->
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnSpan="@integer/settings_columns"
+                    android:layout_columnWeight="1"
+                    android:layout_marginStart="@dimen/space_2"
+                    android:layout_marginTop="@dimen/space_5"
+                    android:layout_marginBottom="@dimen/space_2"
+                    android:text="@string/section_reset"
+                    android:textAppearance="?attr/textAppearanceLabelLarge"
+                    android:textColor="?attr/colorPrimary" />
+
+                <!-- 卸载本应用时把分身一起带走：分身是独立 APK，不清理就会留在系统里 -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_marginStart="@dimen/space_1"
+                    android:layout_marginEnd="@dimen/space_1"
+                    app:cardCornerRadius="@dimen/radius_md"
+                    app:cardElevation="0dp"
+                    app:strokeColor="?attr/colorOutlineVariant"
+                    app:strokeWidth="@dimen/stroke_width">
+
+                    <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:layout_marginStart="16dp"
-                        android:background="?attr/colorOutlineVariant" />
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <include
+                            android:id="@+id/rowPurge"
+                            layout="@layout/item_setting_row" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/stroke_width"
+                            android:layout_marginStart="@dimen/space_4"
+                            android:background="?attr/colorOutlineVariant" />
+
+                        <include
+                            android:id="@+id/rowUninstall"
+                            layout="@layout/item_setting_row" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- ======================= 关于 ======================= -->
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnSpan="@integer/settings_columns"
+                    android:layout_columnWeight="1"
+                    android:layout_marginStart="@dimen/space_2"
+                    android:layout_marginTop="@dimen/space_5"
+                    android:layout_marginBottom="@dimen/space_2"
+                    android:text="@string/section_about"
+                    android:textAppearance="?attr/textAppearanceLabelLarge"
+                    android:textColor="?attr/colorPrimary" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_marginStart="@dimen/space_1"
+                    android:layout_marginEnd="@dimen/space_1"
+                    app:cardCornerRadius="@dimen/radius_md"
+                    app:cardElevation="0dp"
+                    app:strokeColor="?attr/colorOutlineVariant"
+                    app:strokeWidth="@dimen/stroke_width">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <!-- 版本号与更新记录合并成一行：点进去就是该版本的完整变更 -->
+                        <include
+                            android:id="@+id/rowUpdate"
+                            layout="@layout/item_setting_row" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/stroke_width"
+                            android:layout_marginStart="@dimen/space_4"
+                            android:background="?attr/colorOutlineVariant" />
+
+                        <include
+                            android:id="@+id/rowAbout"
+                            layout="@layout/item_setting_row" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- ======================= 支持作者 ======================= -->
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnSpan="@integer/settings_columns"
+                    android:layout_columnWeight="1"
+                    android:layout_marginStart="@dimen/space_2"
+                    android:layout_marginTop="@dimen/space_5"
+                    android:layout_marginBottom="@dimen/space_2"
+                    android:text="@string/section_support"
+                    android:textAppearance="?attr/textAppearanceLabelLarge"
+                    android:textColor="?attr/colorPrimary" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_marginStart="@dimen/space_1"
+                    android:layout_marginEnd="@dimen/space_1"
+                    app:cardCornerRadius="@dimen/radius_md"
+                    app:cardElevation="0dp"
+                    app:strokeColor="?attr/colorOutlineVariant"
+                    app:strokeWidth="@dimen/stroke_width">
 
                     <include
-                        android:id="@+id/rowAbout"
+                        android:id="@+id/rowSupport"
                         layout="@layout/item_setting_row" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                </com.google.android.material.card.MaterialCardView>
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginTop="@dimen/space_5"
-                android:layout_marginBottom="@dimen/space_2"
-                android:text="@string/section_support"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textColor="?attr/colorPrimary" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                app:strokeWidth="1dp">
-
-                <include
-                    android:id="@+id/rowSupport"
-                    layout="@layout/item_setting_row" />
-            </com.google.android.material.card.MaterialCardView>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_5"
-                android:gravity="center"
-                android:text="@string/settings_footer"
-                android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="?attr/colorOnSurfaceVariant" />
-        </LinearLayout>
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnSpan="@integer/settings_columns"
+                    android:layout_columnWeight="1"
+                    android:layout_marginTop="@dimen/space_5"
+                    android:gravity="center"
+                    android:text="@string/settings_footer"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+            </GridLayout>
         </androidx.core.widget.NestedScrollView>
     </androidx.constraintlayout.widget.ConstraintLayout>
 

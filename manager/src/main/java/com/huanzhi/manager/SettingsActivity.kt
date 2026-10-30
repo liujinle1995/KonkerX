@@ -1,11 +1,11 @@
 package com.huanzhi.manager
 
+import com.huanzhi.manager.ui.dialog.confirmDestructive
 import com.huanzhi.manager.ui.theme.MaterialAttr
 
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ContentValues
-import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
 import android.os.Environment
@@ -407,19 +407,13 @@ class SettingsActivity : AppCompatActivity() {
                     append(getString(R.string.purge_confirm_body_legacy, snap.legacy.size))
                 }
             }
-            val dlg = MaterialAlertDialogBuilder(this@SettingsActivity)
+            MaterialAlertDialogBuilder(this@SettingsActivity)
                 .setTitle(R.string.purge_confirm_title)
                 .setMessage(body)
-                .setPositiveButton(R.string.purge_confirm_ok) { _, _ -> doPurge(uninstallAfter = false) }
                 .setNegativeButton(R.string.cancel, null)
-                .create()
-            dlg.show()
-            dlg.getButton(DialogInterface.BUTTON_POSITIVE)?.setTextColor(
-                MaterialColors.getColor(
-                    dlg.getButton(DialogInterface.BUTTON_POSITIVE),
-                    MaterialAttr.colorError
-                )
-            )
+                .confirmDestructive(this@SettingsActivity, getString(R.string.purge_confirm_ok)) {
+                    doPurge(uninstallAfter = false)
+                }
         }
     }
 
@@ -439,21 +433,13 @@ class SettingsActivity : AppCompatActivity() {
                     append(getString(R.string.purge_confirm_body_legacy, snap.legacy.size))
                 }
             }
-            val dlg = MaterialAlertDialogBuilder(this@SettingsActivity)
+            MaterialAlertDialogBuilder(this@SettingsActivity)
                 .setTitle(R.string.purge_uninstall_confirm_title)
                 .setMessage(body)
-                .setPositiveButton(R.string.purge_uninstall_self) { _, _ ->
+                .setNegativeButton(R.string.cancel, null)
+                .confirmDestructive(this@SettingsActivity, getString(R.string.purge_uninstall_self)) {
                     doPurge(uninstallAfter = true)
                 }
-                .setNegativeButton(R.string.cancel, null)
-                .create()
-            dlg.show()
-            dlg.getButton(DialogInterface.BUTTON_POSITIVE)?.setTextColor(
-                MaterialColors.getColor(
-                    dlg.getButton(DialogInterface.BUTTON_POSITIVE),
-                    MaterialAttr.colorError
-                )
-            )
         }
     }
 

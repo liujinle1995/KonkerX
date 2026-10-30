@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    按断点变化的「整数」型令牌（列数这类不是尺寸的东西）。
+
+    单独放一个文件，是因为 dimens 里塞非尺寸值会让「这个文件只管长度」的前提失效，
+    找的时候也得在几十个 dp 值里翻。
+-->
+<resources>
+    <!-- 设置页的分组列数：手机 1 列，≥840dp 时 2 列 -->
+    <integer name="settings_columns">1</integer>
+</resources>

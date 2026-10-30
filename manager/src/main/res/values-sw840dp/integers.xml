@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    EXPANDED 断点下的列数。
+
+    设置页在平板上如果还是一整列，每张卡片会被拉到 900dp 宽 —— 一行「主题模式」
+    四个字后面跟着 800dp 空白，视觉上完全散掉。分成两列后每张卡片约 450dp，
+    和手机上「一行读到头」的节奏接近。
+-->
+<resources>
+    <integer name="settings_columns">2</integer>
+</resources>
