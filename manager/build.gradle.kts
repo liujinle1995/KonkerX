@@ -82,16 +82,18 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.13.1")
+    // material 1.14 的 POM 硬约束 core 1.16.0 / constraintlayout 2.2.1，
+    // 不跟着抬会在 dependency resolution 阶段直接报 resolutionStrategy 冲突
+    implementation("androidx.core:core-ktx:1.16.0")
     // 冷启动闪屏的退出动画。平台侧的 SplashScreen.setOnExitAnimationListener 是 @hide，
     // 只有官方这个兼容库把它开放出来（API 31+ 时内部直接转给平台）
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("com.google.android.material:material:1.12.0")
-    implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("com.google.android.material:material:1.14.0")
+    implementation("androidx.recyclerview:recyclerview:1.4.0")
     // 平板适配靠 ConstraintLayout 的 layout_constraintWidth_max 限制内容列宽
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    implementation("androidx.activity:activity-ktx:1.9.3")
+    implementation("androidx.constraintlayout:constraintlayout:2.2.1")
+    implementation("androidx.activity:activity-ktx:1.10.1")
     // 更新记录的展开/折叠靠 ChangeBounds（AutoTransition），Material 自带但显式声明更稳
     implementation("androidx.transition:transition:1.5.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")

@@ -1,5 +1,7 @@
 package com.huanzhi.manager
 
+import com.huanzhi.manager.ui.theme.MaterialAttr
+
 import android.content.DialogInterface
 import android.content.Intent
 import android.net.Uri
@@ -394,7 +396,7 @@ class MainActivity : AppCompatActivity() {
         // 确认按钮是 destructive 语义：红色，跟「取消」拉开层级
         dlg.getButton(DialogInterface.BUTTON_POSITIVE)
             ?.setTextColor(MaterialColors.getColor(dlg.getButton(DialogInterface.BUTTON_POSITIVE),
-                com.google.android.material.R.attr.colorError))
+                MaterialAttr.colorError))
     }
 
     /** 只删记录：要说清「应用还在不在」，否则用户以为被卸载了 */
@@ -418,7 +420,7 @@ class MainActivity : AppCompatActivity() {
         dlg.show()
         dlg.getButton(DialogInterface.BUTTON_POSITIVE)
             ?.setTextColor(MaterialColors.getColor(dlg.getButton(DialogInterface.BUTTON_POSITIVE),
-                com.google.android.material.R.attr.colorError))
+                MaterialAttr.colorError))
     }
 
     /**

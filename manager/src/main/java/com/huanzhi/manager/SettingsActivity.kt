@@ -1,5 +1,7 @@
 package com.huanzhi.manager
 
+import com.huanzhi.manager.ui.theme.MaterialAttr
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ContentValues
@@ -365,7 +367,7 @@ class SettingsActivity : AppCompatActivity() {
         b.rowUninstall.title.setTextColor(
             MaterialColors.getColor(
                 b.rowUninstall.title,
-                com.google.android.material.R.attr.colorError
+                MaterialAttr.colorError
             )
         )
         b.rowUninstall.root.setOnClickListener { confirmUninstallSelf() }
@@ -415,7 +417,7 @@ class SettingsActivity : AppCompatActivity() {
             dlg.getButton(DialogInterface.BUTTON_POSITIVE)?.setTextColor(
                 MaterialColors.getColor(
                     dlg.getButton(DialogInterface.BUTTON_POSITIVE),
-                    com.google.android.material.R.attr.colorError
+                    MaterialAttr.colorError
                 )
             )
         }
@@ -449,7 +451,7 @@ class SettingsActivity : AppCompatActivity() {
             dlg.getButton(DialogInterface.BUTTON_POSITIVE)?.setTextColor(
                 MaterialColors.getColor(
                     dlg.getButton(DialogInterface.BUTTON_POSITIVE),
-                    com.google.android.material.R.attr.colorError
+                    MaterialAttr.colorError
                 )
             )
         }

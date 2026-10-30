@@ -1,5 +1,7 @@
 package com.huanzhi.manager
 
+import com.huanzhi.manager.ui.theme.MaterialAttr
+
 import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.View
@@ -91,7 +93,7 @@ class CloneAdapter(
                 MaterialColors.getColor(b.badge, com.google.android.material.R.attr.colorOnPrimaryContainer)
             )
             b.badge.backgroundTintList = ColorStateList.valueOf(
-                MaterialColors.getColor(b.badge, com.google.android.material.R.attr.colorPrimaryContainer)
+                MaterialColors.getColor(b.badge, MaterialAttr.colorPrimaryContainer)
             )
             b.badge.contentDescription = ctx.getString(
                 R.string.badge_updatable_desc,

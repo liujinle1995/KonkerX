@@ -1,5 +1,7 @@
 package com.huanzhi.manager
 
+import com.huanzhi.manager.ui.theme.MaterialAttr
+
 import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
@@ -36,7 +38,7 @@ object ChangelogDialog {
                     styled(ctx, sec.title, com.google.android.material.R.style.TextAppearance_Material3_LabelLarge)
                         .apply {
                             setTextColor(
-                                MaterialColors.getColor(this, com.google.android.material.R.attr.colorPrimary)
+                                MaterialColors.getColor(this, MaterialAttr.colorPrimary)
                             )
                             setPadding(0, dp(ctx, if (si == 0) 2 else 10), 0, dp(ctx, 2))
                         }

@@ -3,6 +3,7 @@ package com.huanzhi.manager
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import com.huanzhi.manager.ui.theme.MaterialAttr
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.R as MaterialR
 
@@ -41,7 +42,7 @@ class DocRenderer(
             TextView(activity).apply {
                 text = section.title
                 setTextAppearance(MaterialR.style.TextAppearance_Material3_TitleMedium)
-                setTextColor(MaterialColors.getColor(this, MaterialR.attr.colorPrimary))
+                setTextColor(MaterialColors.getColor(this, MaterialAttr.colorPrimary))
                 setPadding(0, dp(18), 0, dp(4))
             }
         )
@@ -68,7 +69,7 @@ class DocRenderer(
             TextView(activity).apply {
                 this.text = "$text  →"
                 setTextAppearance(MaterialR.style.TextAppearance_Material3_TitleSmall)
-                setTextColor(MaterialColors.getColor(this, MaterialR.attr.colorPrimary))
+                setTextColor(MaterialColors.getColor(this, MaterialAttr.colorPrimary))
                 setPadding(0, dp(24), 0, dp(8))
                 isClickable = true
                 isFocusable = true

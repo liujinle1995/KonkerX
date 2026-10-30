@@ -1,5 +1,7 @@
 package com.huanzhi.manager
 
+import com.huanzhi.manager.ui.theme.MaterialAttr
+
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.drawable.GradientDrawable
@@ -92,7 +94,7 @@ class RuntimeAdapter(private val ctx: Context) :
             it.processes.isNotEmpty() -> {
                 b.memLine.visibility = View.VISIBLE
                 b.memLine.setTextColor(
-                    MaterialColors.getColor(b.memLine, com.google.android.material.R.attr.colorPrimary)
+                    MaterialColors.getColor(b.memLine, MaterialAttr.colorPrimary)
                 )
                 b.memLine.text = ctx.getString(
                     R.string.runtime_mem_line,
