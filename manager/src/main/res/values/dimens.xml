@@ -66,7 +66,13 @@
 
     <!-- 列表条目：主标题 1 行 + 副标题 1 行，最小高度兜住 48dp 热区 -->
     <dimen name="row_min_height">64dp</dimen>
-    <dimen name="app_icon_size">44dp</dimen>
+
+    <!--
+        列表里的应用图标。
+        统一成 48dp：原本 item_clone 写死 48、item_app 写死 44，同一类产品列表里
+        图标差 4dp 是看得出来的；48 也正好和 touch_min 对齐。
+    -->
+    <dimen name="app_icon_size">48dp</dimen>
 
     <!-- 空态插图：比列表图标大一档，但不做到「装饰画」的体量，免得抢走动作的注意力 -->
     <dimen name="empty_art_size">72dp</dimen>

@@ -31,6 +31,7 @@
     <!-- 胶囊：任意高度都包成半圆，不写死具体值，控件改高度也不会塌成圆角矩形 -->
     <dimen name="radius_pill">9999dp</dimen>
 
-    <!-- 描边：控制在 1dp，深色下由 colorOutlineVariant 提供可见度 -->
+    <!-- 描边：1dp 常态，选中态加粗到 2dp（配合换色，颜色不是唯一的选中线索） -->
     <dimen name="stroke_width">1dp</dimen>
+    <dimen name="stroke_width_selected">2dp</dimen>
 </resources>

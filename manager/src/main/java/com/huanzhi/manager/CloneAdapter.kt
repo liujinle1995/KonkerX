@@ -1,20 +1,19 @@
 package com.huanzhi.manager
 
-import com.huanzhi.manager.ui.theme.MaterialAttr
-
 import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.MaterialColors
+import com.huanzhi.manager.core.AppScanner
 import com.huanzhi.manager.core.CloneRecord
 import com.huanzhi.manager.core.CloneVersions
 import com.huanzhi.manager.core.UpdateKind
-import com.huanzhi.manager.core.UpdateState
 import com.huanzhi.manager.databinding.ItemCloneBinding
 import com.huanzhi.manager.ui.motion.pressFeedback
 import com.huanzhi.manager.ui.motion.resetMotion
+import com.huanzhi.manager.ui.theme.MaterialAttr
 
 /**
  * 列表一行的数据。
@@ -25,19 +24,40 @@ import com.huanzhi.manager.ui.motion.resetMotion
 data class CloneRow(
     val rec: CloneRecord,
     val installed: Boolean,
-    val update: UpdateState,
+    val update: com.huanzhi.manager.core.UpdateState,
 )
 
 class CloneAdapter(
     private val onClick: (CloneRecord) -> Unit,
-    private val onMore: (CloneRecord, android.view.View) -> Unit
+    private val onMore: (CloneRecord, android.view.View) -> Unit,
 ) : RecyclerView.Adapter<CloneAdapter.VH>() {
 
     private val items = mutableListOf<CloneRow>()
 
+    /**
+     * 平板双栏下被选中的那一行（按包名比对）。单栏下永远是 null。
+     *
+     * 为什么在这里而不是放在 ViewHolder：选中是「整个列表只有一行成立」的状态，
+     * 交给各 ViewHolder 自己判断，滚动复用时就会出现两行同时高亮。
+     */
+    var selectedPkg: String? = null
+        private set
+
+    /** @return 选中状态是否真的变了 —— 没变就不该触发重绘 */
+    fun setSelected(pkg: String?): Boolean {
+        if (selectedPkg == pkg) return false
+        selectedPkg = pkg
+        notifyDataSetChanged()
+        return true
+    }
+
     fun submit(list: List<CloneRow>) {
         items.clear()
         items.addAll(list)
+        // 选中的那一行可能已经不在新数据里了（被卸载并同步掉了），别把选中态挂在空气上
+        if (selectedPkg != null && list.none { it.rec.clonePkg == selectedPkg }) {
+            selectedPkg = null
+        }
         notifyDataSetChanged()
     }
 
@@ -70,12 +90,42 @@ class CloneAdapter(
             }
 
             bindBadge(rec, item)
+            bindSelection(rec)
 
-            b.icon.setImageDrawable(com.huanzhi.manager.core.AppScanner.iconOf(b.root.context, rec.targetPkg))
+            b.icon.setImageDrawable(AppScanner.iconOf(b.root.context, rec.targetPkg))
             b.root.setOnClickListener { onClick(rec) }
             b.more.setOnClickListener { v -> onMore(rec, v) }
             // 按下缩 2%：告诉手指「这一行接住了」，但幅度小到不会打断阅读
             b.root.pressFeedback()
+        }
+
+        /**
+         * 选中态：加深描边 + 换底 + `isSelected`。
+         *
+         * 三个一起做是因为它们各自都不够用：
+         *   · 只换底色 —— 深色模式下次级容器的差别会被压掉，几乎看不出来；
+         *   · 只加粗描边 —— 2dp 在 AMOLED 上属于「疑似渲染问题」量级；
+         *   · 而 `isSelected` 是给 TalkBack 的 —— 视觉再清楚，读屏用户也拿不到这个信息。
+         */
+        private fun bindSelection(rec: CloneRecord) {
+            val selected = rec.clonePkg == selectedPkg
+            b.root.isSelected = selected
+            val ctx = b.root.context
+            b.root.strokeWidth = ctx.resources.getDimensionPixelSize(
+                if (selected) R.dimen.stroke_width_selected else R.dimen.stroke_width
+            )
+            b.root.strokeColor = MaterialColors.getColor(
+                b.root,
+                if (selected) MaterialAttr.colorPrimary else MaterialAttr.colorOutlineVariant,
+            )
+            b.root.setCardBackgroundColor(
+                ColorStateList.valueOf(
+                    MaterialColors.getColor(
+                        b.root,
+                        if (selected) MaterialAttr.colorPrimaryContainer else MaterialAttr.colorSurface,
+                    )
+                )
+            )
         }
 
         /**
@@ -90,7 +140,7 @@ class CloneAdapter(
             if (!show) return
             val ctx = b.root.context
             b.badge.setTextColor(
-                MaterialColors.getColor(b.badge, com.google.android.material.R.attr.colorOnPrimaryContainer)
+                MaterialColors.getColor(b.badge, MaterialAttr.colorOnPrimaryContainer)
             )
             b.badge.backgroundTintList = ColorStateList.valueOf(
                 MaterialColors.getColor(b.badge, MaterialAttr.colorPrimaryContainer)

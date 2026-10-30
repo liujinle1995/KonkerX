@@ -1,10 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    根节点从 CoordinatorLayout 换成 LinearLayout。
-    原来那层 CoordinatorLayout + appbar_scrolling_view_behavior 在这里其实没干活：
-    AppBarLayout 没有设置任何 scrollFlags，标题不会随列表折叠，但 behavior 仍然把
-    下面的内容按 appbar 高度往下平移 —— 结果内容底部会跑出屏幕，FAB 也就没法贴着
-    「内容列的右下角」摆。换成纵向 LinearLayout 后，内容区拿到的是真正剩余的高度。
+    主页。
+
+    结构（自上而下）：
+      AppBarLayout  标题栏
+      内容区        一个 ConstraintLayout 负责「把东西夹在屏幕中间」，
+                    里面套横向 LinearLayout：
+                      ├ listPane   列表 / 空态 / FAB（始终存在）
+                      └ detail     详情面板（仅 EXPANDED 尺寸类下 VISIBLE）
+
+    为什么右侧面板用 visibility 而不是两套 layout 资源：
+    真正的判据是**当前窗口宽度**（≥840dp），而 sw840dp 这类资源限定符看的是
+    **最小宽度**。平板横屏被拖进分屏后实际宽度可能掉到 600dp 以下，但 sw 没变，
+    按资源限定符会继续给双栏，两栏各自被压成一条。交给运行时的 WindowSizeClass
+    判断才准 —— 代价是多写几行 Kotlin，换来分屏和折叠屏上的正确表现。
+
+    根节点从此见效性的 LinearLayout：原来那层 CoordinatorLayout +
+    appbar_scrolling_view_behavior 其实没干活 —— AppBarLayout 没设任何 scrollFlags，
+    标题不会随列表折叠，但 behavior 仍把内容按 appbar 高度往下平移，
+    导致内容底部跑出屏幕、FAB 也贴不到内容列的右下角。
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -44,82 +58,117 @@
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/list"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:clipToPadding="false"
-            android:paddingTop="@dimen/space_2"
-            android:paddingBottom="96dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintWidth_max="@dimen/content_max_width" />
-
         <LinearLayout
-            android:id="@+id/empty"
+            android:id="@+id/body"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:padding="@dimen/space_6"
-            android:visibility="gone"
+            android:orientation="horizontal"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintWidth_max="@dimen/text_max_width">
+            app:layout_constraintWidth_max="@dimen/content_max_width">
 
-            <!-- 空态必须给动作：只写「还没有」等于把用户晾在原地 -->
-            <ImageView
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_empty_clone" />
+            <!-- ============ 左栏：列表 + 空态 + FAB ============ -->
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/listPane"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_4"
-                android:text="@string/empty_title"
-                android:textAppearance="?attr/textAppearanceTitleMedium" />
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/list"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:clipToPadding="false"
+                    android:paddingStart="@dimen/list_side_padding"
+                    android:paddingEnd="@dimen/list_side_padding"
+                    android:paddingTop="@dimen/space_2"
+                    android:paddingBottom="@dimen/fab_scroll_inset"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_2"
-                android:gravity="center"
-                android:text="@string/empty_hint"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorOnSurfaceVariant" />
+                <LinearLayout
+                    android:id="@+id/empty"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_6"
+                    android:visibility="gone"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintWidth_max="@dimen/text_max_width">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/emptyAction"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_5"
-                android:text="@string/action_create_first"
-                app:icon="@drawable/ic_add" />
+                    <!-- 空态必须给动作：只写「还没有」等于把用户晾在原地 -->
+                    <ImageView
+                        android:layout_width="@dimen/empty_art_size"
+                        android:layout_height="@dimen/empty_art_size"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_empty_clone" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_4"
+                        android:text="@string/empty_title"
+                        android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_2"
+                        android:gravity="center"
+                        android:text="@string/empty_hint"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/emptyAction"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_5"
+                        android:text="@string/action_create_first"
+                        app:icon="@drawable/ic_add" />
+                </LinearLayout>
+
+                <!--
+                    FAB 不再贴在屏幕右下角，而是贴列表（也就是内容列）的右下角：
+                    平板上内容列被 content_max_width 夹在中间，FAB 跟着一起居中，
+                    不会孤零零飘在离内容很远的屏幕边上。
+                -->
+                <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+                    android:id="@+id/fab"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="@dimen/space_5"
+                    android:layout_marginBottom="@dimen/space_5"
+                    android:contentDescription="@string/new_clone"
+                    android:text="@string/new_clone"
+                    android:visibility="gone"
+                    app:icon="@drawable/ic_add"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="@id/list" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <!--
+                ============ 右栏：详情面板 ============
+                默认 GONE，由 MainActivity 在 EXPANDED 尺寸类下置为 VISIBLE。
+                宽度为固定值而非权重：这块内容的排版是按 380dp 排的，
+                跟着窗口拉宽会出现一行字横跨半米。
+            -->
+            <include
+                android:id="@+id/detail"
+                layout="@layout/view_clone_detail"
+                android:layout_width="@dimen/detail_pane_width"
+                android:layout_height="match_parent"
+                android:layout_marginStart="@dimen/two_pane_gutter"
+                android:visibility="gone" />
         </LinearLayout>
-
-        <!--
-            FAB 不再贴在屏幕右下角，而是贴列表（也就是内容列）的右下角：
-            平板上内容列被 content_max_width 夹在中间，FAB 跟着一起居中，
-            不会孤零零飘在离内容很远的屏幕边上。
-        -->
-        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-            android:id="@+id/fab"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="@dimen/space_5"
-            android:layout_marginBottom="@dimen/space_5"
-            android:contentDescription="@string/new_clone"
-            android:text="@string/new_clone"
-            android:visibility="gone"
-            app:icon="@drawable/ic_add"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="@id/list" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </LinearLayout>

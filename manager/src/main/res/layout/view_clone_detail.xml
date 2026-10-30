@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    平板的右侧详情面板（list-detail 的 detail）。
+
+    只在 EXPANDED 尺寸类下存在于视图树中（见 MainActivity.applyLayoutForSizeClass），
+    COMPACT / MEDIUM 下整个 view visibility = GONE，连 measure 都不参与。
+
+    两块内容互斥：
+      · placeholder —— 还没选任何分身时的引导。没有它右侧会是一块纯色空白，
+        用户第一眼看到的是「这个面板坏了」而不是「我得先选一个」。
+      · content     —— 选中之后的元数据与动作。
+
+    面板宽度固定取 @dimen/detail_pane_width，不跟随窗口缩放：
+    这块内容的排版是按 380dp 排的，跟着窗口拉宽会出现一行字横跨 600dp。
+-->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/detailRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/space_5">
+
+        <!-- ================= 未选中：占位 ================= -->
+        <LinearLayout
+            android:id="@+id/placeholder"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingHorizontal="@dimen/space_4"
+            android:paddingTop="@dimen/space_6">
+
+            <ImageView
+                android:layout_width="@dimen/empty_art_size"
+                android:layout_height="@dimen/empty_art_size"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_empty_clone" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_4"
+                android:gravity="center"
+                android:text="@string/detail_placeholder_title"
+                android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_2"
+                android:gravity="center"
+                android:text="@string/detail_placeholder_body"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+        </LinearLayout>
+
+        <!-- ================= 已选中：元数据 + 动作 ================= -->
+        <LinearLayout
+            android:id="@+id/content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <!-- 头部：图标 + 名称 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/icon"
+                    android:layout_width="@dimen/app_icon_size_lg"
+                    android:layout_height="@dimen/app_icon_size_lg"
+                    android:contentDescription="@null"
+                    tools:src="@tools:sample/avatars" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/space_4"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <!-- 分身名可能被改得比较长，限两行再省略 -->
+                    <TextView
+                        android:id="@+id/label"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="2"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        tools:text="微信 · 分身2" />
+
+                    <TextView
+                        android:id="@+id/targetLabel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_1"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        tools:text="原应用：微信" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!--
+                状态 chip：只靠形状不足以区分「已安装 / 未安装 / 可更新」，
+                文字必须写进去 —— 颜色不能是唯一的信息载体。
+            -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/statusChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_4"
+                app:cardCornerRadius="@dimen/radius_pill"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="@dimen/stroke_width">
+
+                <TextView
+                    android:id="@+id/statusText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingHorizontal="@dimen/space_3"
+                    android:paddingVertical="@dimen/space_1"
+                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                    tools:text="已安装" />
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 元数据：四行，标签与取值左右分栏 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_5"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingVertical="@dimen/space_2">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/detail_meta_pkg"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <!-- 包名长且信息密度高，观众是要对着看，所以允许两行并 ellipsize=middle -->
+                    <TextView
+                        android:id="@+id/pkg"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.4"
+                        android:ellipsize="middle"
+                        android:gravity="end"
+                        android:maxLines="2"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        tools:text="huanzhi.clone.k12" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingVertical="@dimen/space_2">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/detail_meta_version"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <TextView
+                        android:id="@+id/version"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.4"
+                        android:gravity="end"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        tools:text="8.0.25" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingVertical="@dimen/space_2">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/detail_meta_created"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <TextView
+                        android:id="@+id/installedAt"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.4"
+                        android:gravity="end"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        tools:text="3 天前" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!--
+                动作区。层级是：启动（Filled，唯一主动作）> 更新（Tonal，次级）
+                > 更多操作（Text，收纳其余）。
+                「更新」只在真的有新版本时才出现 —— 留一个点了没反应的按钮，
+                用户会以为工具坏了。
+            -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/actionLaunch"
+                style="@style/Widget.Material3Expressive.Button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_5"
+                android:text="@string/detail_action_launch"
+                app:icon="@drawable/ic_launch" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/actionUpdate"
+                style="@style/Widget.HuanZhi.Button.Tonal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_2"
+                android:text="@string/action_update_all"
+                android:visibility="gone"
+                app:icon="@drawable/ic_refresh"
+                tools:visibility="visible" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/actionMore"
+                style="@style/Widget.Material3Expressive.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_2"
+                android:text="@string/more_actions"
+                app:icon="@drawable/ic_more_vert" />
+        </LinearLayout>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

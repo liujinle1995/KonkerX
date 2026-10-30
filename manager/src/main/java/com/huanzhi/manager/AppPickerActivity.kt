@@ -1,5 +1,7 @@
 package com.huanzhi.manager
 
+import com.huanzhi.manager.ui.adaptive.WindowSizeClasses
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.DialogInterface
@@ -41,7 +43,6 @@ import com.huanzhi.manager.ui.motion.appear
 import com.huanzhi.manager.ui.motion.cascade
 import com.huanzhi.manager.ui.motion.disappear
 import com.huanzhi.manager.util.Formats
-import com.huanzhi.manager.util.Screen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -110,7 +111,7 @@ class AppPickerActivity : AppCompatActivity() {
 
         workflow = CloneWorkflow(this)
         adapter = AppAdapter(::onAppClick, ::onAppLongClick)
-        val columns = Screen.columns(this)
+        val columns = WindowSizeClasses.pickerColumns(this)
         val lm = GridLayoutManager(this, columns)
         // 分组标题要占满整行；平板上两列时，否则标题只会占左边半格，看着像漏了一列
         lm.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {

@@ -27,4 +27,14 @@ object MaterialAttr {
 
     /** M3 专属，仍由 Material 库自己声明 */
     val colorPrimaryContainer: Int = com.google.android.material.R.attr.colorPrimaryContainer
+
+    val colorOnPrimaryContainer: Int = com.google.android.material.R.attr.colorOnPrimaryContainer
+
+    val colorSurface: Int = com.google.android.material.R.attr.colorSurface
+
+    val colorOutlineVariant: Int = com.google.android.material.R.attr.colorOutlineVariant
+
+    val colorOnSurfaceVariant: Int = com.google.android.material.R.attr.colorOnSurfaceVariant
+
+    val colorOnSurface: Int = com.google.android.material.R.attr.colorOnSurface
 }

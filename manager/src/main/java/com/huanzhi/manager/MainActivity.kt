@@ -1,24 +1,15 @@
 package com.huanzhi.manager
 
-import com.huanzhi.manager.ui.theme.MaterialAttr
-
-import android.content.DialogInterface
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
-import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.huanzhi.manager.core.ApkInstaller
 import com.huanzhi.manager.core.AppScanner
-import com.huanzhi.manager.core.BuildCancelledException
-import com.huanzhi.manager.core.BuildControl
 import com.huanzhi.manager.core.CloneRecord
 import com.huanzhi.manager.core.CloneStore
 import com.huanzhi.manager.core.CloneVersions
@@ -27,30 +18,66 @@ import com.huanzhi.manager.core.InstallBus
 import com.huanzhi.manager.core.InstallListener
 import com.huanzhi.manager.core.SettingsStore
 import com.huanzhi.manager.core.TemplateSpec
+import com.huanzhi.manager.core.UpdateKind
 import com.huanzhi.manager.core.UpdateRunner
 import com.huanzhi.manager.databinding.ActivityMainBinding
-import com.huanzhi.manager.databinding.DialogRenameBinding
+import com.huanzhi.manager.databinding.ViewCloneDetailBinding
+import com.huanzhi.manager.ui.ProgressDialog
+import com.huanzhi.manager.ui.adaptive.WindowSizeClass
+import com.huanzhi.manager.ui.adaptive.WindowSizeClasses
 import com.huanzhi.manager.ui.motion.Curve
 import com.huanzhi.manager.ui.motion.cascade
 import com.huanzhi.manager.ui.motion.crossFade
 import com.huanzhi.manager.ui.motion.hideScaled
 import com.huanzhi.manager.ui.motion.showScaled
-import com.huanzhi.manager.util.Screen
+import com.huanzhi.manager.util.Formats
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/**
+ * 主页：分身列表。
+ *
+ * 现在这个 Activity 只管三件事 —— 列表的显隐编排、工具栏、批量更新。
+ * 「对一个分身能做什么」（改名 / 重建 / 卸载 / 删记录）全部搬到了 [CloneActions]：
+ * 平板双栏的右侧详情面板要用同一批动作，留在 Activity 里就得再抄一遍，
+ * 而两份确认文案很快会长得不一样。
+ */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var b: ActivityMainBinding
     private lateinit var workflow: CloneWorkflow
     private lateinit var adapter: CloneAdapter
+    private lateinit var actions: CloneActions
+
+    /**
+     * 当前窗口的尺寸类，决定列表列数与是否双栏。
+     *
+     * Configuration 变化（转屏、折叠、拖进分屏）会走 Activity 重建，
+     * 重建后 onCreate 重新取值就是新的；不要在别处缓存真实宽度。
+     */
+    private lateinit var sizeClass: WindowSizeClass
+
+    /** 双栏下右侧面板的绑定。单栏时为 null，这样「忘记判 greet 空」会立刻炸而不是显示错数据 */
+    private var detailBinding: ViewCloneDetailBinding? = null
+
+    /**
+     * 最近一次渲染出来的行数据。
+     *
+     * 存在这里不是为了重复 adapter 内部状态，而是右侧面板需要一个稳定的数据源：
+     * 选中行被卸载后，[CloneRow] 必须换成新算出来的那份（安装状态已经变了），
+     * 拿旧对象继续画就会显示过期的「已安装」。
+     */
+    private var rows: List<CloneRow> = emptyList()
+
+    /** 双栏模式下详情面板当前展示的行的包名；null = 占位态 */
+    private var selectedPkg: String? = null
 
     /** 当前比源应用旧的那些分身；菜单项和「更新全部」都以它为准 */
     private var outdated: List<CloneRecord> = emptyList()
 
     /** 批量更新进行中时挂着的进度弹窗；转屏重建后要重新挂一个 */
-    private var updateDialog: com.huanzhi.manager.ui.ProgressDialog? = null
+    private var updateDialog: ProgressDialog? = null
 
     /** 首帧的显隐由窗口进入转场负责，这里不再叠一层动画 */
     private var firstRender = true
@@ -66,7 +93,7 @@ class MainActivity : AppCompatActivity() {
      * 明明刚才才装完。装上（或卸掉）之后立刻重读一次状态，这一帧就不存在了。
      */
     private val installListener: InstallListener = { pkg, _, _ ->
-        if (com.huanzhi.manager.core.TemplateSpec.isClonePkg(pkg)) {
+        if (TemplateSpec.isClonePkg(pkg)) {
             runOnUiThread { if (!isFinishing && !isDestroyed) refresh() }
         }
     }
@@ -79,10 +106,16 @@ class MainActivity : AppCompatActivity() {
         b = ActivityMainBinding.inflate(layoutInflater)
         setContentView(b.root)
 
+        sizeClass = WindowSizeClasses.of(this)
+        applyLayoutForSizeClass()
+
         workflow = CloneWorkflow(this)
-        adapter = CloneAdapter(onClick = ::onCloneClick, onMore = ::onMoreClick)
-        // 平板上两列，手机上仍然一列
-        b.list.layoutManager = GridLayoutManager(this, Screen.columns(this))
+        actions = CloneActions(this, workflow, onChanged = ::refresh)
+        adapter = CloneAdapter(
+            onClick = ::onCloneClick,
+            onMore = { rec, _ -> actions.showMenu(rec) },
+        )
+        b.list.layoutManager = GridLayoutManager(this, sizeClass.listColumns)
         b.list.adapter = adapter
         b.fab.setOnClickListener { openPicker() }
         // 空态里也放一个入口：只写「还没有分身」是反模式，得让用户当场能动手
@@ -109,6 +142,40 @@ class MainActivity : AppCompatActivity() {
 
         InstallBus.addListener(installListener)
         checkLegacyClones()
+    }
+
+    /**
+     * 按尺寸类切换布局形态。
+     *
+     * 详情页在资源里默认为 GONE，只在 EXPANDED 下挂出来并取到绑定对象。
+     * 反向也会走：平板把窗口拖窄成 COMPACT 后 Activity 重建，这里同样要把它藏回去 ——
+     * 否则右侧面板会占着屏幕的固定一块，列表被挤成中间一小条。
+     */
+    private fun applyLayoutForSizeClass() {
+        if (!sizeClass.listDetail) {
+            b.detail.root.visibility = View.GONE
+            detailBinding = null
+            selectedPkg = null
+            return
+        }
+        b.detail.root.visibility = View.VISIBLE
+        val d = ViewCloneDetailBinding.bind(b.detail.root)
+        detailBinding = d
+        wireDetailActions(d)
+        renderDetail()
+    }
+
+    /**
+     * 详情面板三个动作的接线。
+     *
+     * 放在尺寸类判定时而不是每次选中时：选中会频繁切换，重复 setOnClickListener
+     * 虽然不会真的泄漏（它是赋值不是叠加），但把「读数」和「接线」混在一起会让
+     * renderDetail 变得有副作用，改起来容易出岔子。
+     */
+    private fun wireDetailActions(d: ViewCloneDetailBinding) {
+        d.actionLaunch.setOnClickListener { currentRow()?.let { actions.openOrInstall(it.rec) } }
+        d.actionMore.setOnClickListener { currentRow()?.let { actions.showMenu(it.rec) } }
+        d.actionUpdate.setOnClickListener { currentRow()?.let { actions.rebuild(it.rec) } }
     }
 
     /**
@@ -151,7 +218,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refresh()
-        ensureInstallPermission()
+        actions.ensureInstallPermission()
         // 转屏 / 从系统安装器回来时进度弹窗已经没了，任务还在跑就重新挂上
         if (UpdateRunner.isRunning && updateDialog == null) {
             val dlg = progressDialog()
@@ -175,12 +242,12 @@ class MainActivity : AppCompatActivity() {
                 runCatching { CloneStore(this@MainActivity).syncWithSystem() }.getOrDefault(emptyList())
             }
             if (gone.isNotEmpty()) {
-                toast("已移除 ${gone.size} 个已卸载的分身记录")
+                toast(getString(R.string.sync_pruned, gone.size))
             }
             // 版本比对要查 PackageManager，和读记录一起放到 IO。
-            // 结果同时用于两件事：行里的角标、菜单里的「更新全部（N）」——
-            // 两处各算一遍的话，早晚会出现「菜单说有 2 个、列表里只标了 1 个」。
-            val (rows, outdated) = withContext(Dispatchers.IO) {
+            // 结果同时用于三件事：行里的角标、菜单里的「更新全部（N）」、右侧详情的「更新」按钮 ——
+            // 三处各算一遍的话，早晚会出现「菜单说有 2 个、列表里只标了 1 个」。
+            val (newRows, newOutdated) = withContext(Dispatchers.IO) {
                 val recs = workflow.all()
                 val mapped = recs.map { rec ->
                     CloneRow(
@@ -191,11 +258,30 @@ class MainActivity : AppCompatActivity() {
                 }
                 mapped to CloneVersions.outdated(this@MainActivity, recs)
             }
-            this@MainActivity.outdated = outdated
-            adapter.submit(rows)
-            render(rows.isEmpty())
-            syncUpdateMenu(outdated.size)
+            outdated = newOutdated
+            rows = newRows
+            adapter.submit(newRows)
+            render(newRows.isEmpty())
+            syncUpdateMenu(newOutdated.size)
+            // 详情面板里的版本 / 安装状态可能已经变了，必须跟着重画
+            syncDetailAfterRefresh()
         }
+    }
+
+    /**
+     * 刷新后维持右侧面板与列表的一致性。
+     *
+     * 选中行还在就用新的 [CloneRow] 重画；已经被卸载同步掉了就回到占位态 ——
+     * 挂着一个不存在的应用的详情，比右侧空着更让人困惑。
+     */
+    private fun syncDetailAfterRefresh() {
+        if (detailBinding == null) return
+        val pkg = selectedPkg
+        if (pkg != null && rows.none { it.rec.clonePkg == pkg }) {
+            selectedPkg = null
+            adapter.setSelected(null)
+        }
+        renderDetail()
     }
 
     /** 菜单项跟着刷新走：没有可更新的时候整项隐藏，别留一个点了没反应的入口 */
@@ -227,7 +313,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** 进度回调统一在这里接，转屏重建后重新接一次即可，不需要让任务的存活跟 Activity 绑定 */
-    private fun wireUpdateUi(dlg: com.huanzhi.manager.ui.ProgressDialog) {
+    private fun wireUpdateUi(dlg: ProgressDialog) {
         UpdateRunner.onProgress = { p ->
             dlg.update((p.fraction * 100).toInt().coerceIn(0, 100), p.text)
         }
@@ -291,14 +377,68 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ------------------------------------------------------------ 详情面板
+
+    /**
+     * 点击一行。
+     *
+     * 单栏：直接打开（没装就问要不要装）—— 手机上的主路径，多点一次就变累赘。
+     * 双栏：**只选中**。列表和详情同屏可见时，点一下就把应用推到前台是违反预期的，
+     * 用户在这里的意图是「看看这个的信息」，真要启动有面板上那个明确的「启动」按钮。
+     */
+    private fun onCloneClick(rec: CloneRecord) {
+        if (sizeClass.listDetail) {
+            selectedPkg = rec.clonePkg
+            adapter.setSelected(rec.clonePkg)
+            renderDetail()
+        } else {
+            actions.openOrInstall(rec)
+        }
+    }
+
+    /** 详情面板此刻应该展示的行；没选中或行已消失时返回 null */
+    private fun currentRow(): CloneRow? {
+        val pkg = selectedPkg ?: return null
+        return rows.firstOrNull { it.rec.clonePkg == pkg }
+    }
+
+    /** 把当前选中的行渲染进右侧面板；没有选中时回落占位态 */
+    private fun renderDetail() {
+        val d = detailBinding ?: return
+        val row = currentRow()
+        if (row == null) {
+            d.content.visibility = View.GONE
+            d.placeholder.visibility = View.VISIBLE
+            return
+        }
+        d.placeholder.visibility = View.GONE
+        d.content.visibility = View.VISIBLE
+
+        val rec = row.rec
+        d.label.text = rec.label
+        d.targetLabel.text = getString(R.string.detail_target, rec.targetLabel)
+        d.icon.setImageDrawable(AppScanner.iconOf(this, rec.targetPkg))
+
+        // 状态 chip 带文字：颜色不能是唯一的信息载体
+        d.statusText.text = getString(
+            if (row.installed) R.string.detail_status_installed else R.string.detail_status_missing
+        )
+        d.pkg.text = rec.clonePkg
+        d.version.text = CloneVersions.show(rec.sourceVersionCode, rec.sourceVersionName)
+        d.installedAt.text = Formats.relative(rec.createdAt)
+
+        // 「更新」只在确定有新版本时出现：留一个点了没反应的按钮，用户会以为是工具坏了
+        val updatable = row.installed && row.update.kind == UpdateKind.AVAILABLE
+        d.actionUpdate.visibility = if (updatable) View.VISIBLE else View.GONE
+    }
+
+    // ------------------------------------------------------------ 其余
+
     /**
      * 冷启动闪屏的退出动画。
      *
      * Android 12 起系统强制给每个应用一个闪屏（图标 + 背景），默认退出是图标直接消失、
      * 内容同时出现，边界很硬。这里接住退出回调，让图标放大 12% 并淡出，与内容淡入接上。
-     *
-     * 平台侧的 `SplashScreen.setOnExitAnimationListener` 是 @hide，只有官方兼容库能用；
-     * 库里在 API 31+ 会直接转给平台实现。
      *
      * 全程 runCatching：热启动、分屏、或系统没给闪屏窗口时根本不会回调，
      * 拿不到就算了，不能因为一个装饰性动画影响启动。
@@ -329,238 +469,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun onCloneClick(rec: CloneRecord) {
-        if (!AppScanner.isInstalled(this, rec.clonePkg)) {
-            MaterialAlertDialogBuilder(this)
-                .setTitle(rec.label)
-                .setMessage("这个分身还没装到系统里，要现在安装吗？")
-                .setPositiveButton("安装") { _, _ -> rebuild(rec) }
-                .setNegativeButton("取消", null)
-                .show()
-            return
-        }
-        val intent = packageManager.getLaunchIntentForPackage(rec.clonePkg)
-        if (intent == null) {
-            toast("这个分身没有可用入口，建议重新生成")
-            return
-        }
-        try {
-            startActivity(intent)
-        } catch (t: Throwable) {
-            toast("启动失败：${t.message}")
-        }
-    }
-
     private fun openPicker() {
         startActivity(Intent(this, AppPickerActivity::class.java))
     }
 
-    private fun onMoreClick(rec: CloneRecord, anchor: android.view.View) {
-        val items = arrayOf(
-            getString(R.string.action_rename),
-            getString(R.string.action_rebuild),
-            getString(R.string.action_compat),
-            getString(R.string.action_uninstall),
-            getString(R.string.action_forget)
-        )
-        MaterialAlertDialogBuilder(this)
-            .setTitle(rec.label)
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> askRename(rec)
-                    1 -> rebuild(rec)
-                    2 -> askCompatRebuild(rec)
-                    3 -> confirmUninstall(rec)
-                    4 -> confirmForget(rec)
-                }
-            }
-            .show()
-    }
-
-    /**
-     * 卸载前必须确认。
-     *
-     * 卸载会把分身自己的数据一起删掉（不可恢复），原来点一下就执行，
-     * 跟旁边的「重命名」只差一个条目位置，误触代价太高。
-     */
-    private fun confirmUninstall(rec: CloneRecord) {
-        val dlg = MaterialAlertDialogBuilder(this)
-            .setTitle(getString(R.string.uninstall_title, rec.label))
-            .setMessage(getString(R.string.uninstall_message))
-            .setPositiveButton(getString(R.string.action_uninstall)) { _, _ ->
-                ApkInstaller.uninstall(this, rec.clonePkg)
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .create()
-        dlg.show()
-        // 确认按钮是 destructive 语义：红色，跟「取消」拉开层级
-        dlg.getButton(DialogInterface.BUTTON_POSITIVE)
-            ?.setTextColor(MaterialColors.getColor(dlg.getButton(DialogInterface.BUTTON_POSITIVE),
-                MaterialAttr.colorError))
-    }
-
-    /** 只删记录：要说清「应用还在不在」，否则用户以为被卸载了 */
-    private fun confirmForget(rec: CloneRecord) {
-        val installed = AppScanner.isInstalled(this, rec.clonePkg)
-        val msg = if (installed) {
-            getString(R.string.forget_message_installed, rec.label, rec.clonePkg)
-        } else {
-            getString(R.string.forget_message_missing, rec.label)
-        }
-        val dlg = MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.forget_title)
-            .setMessage(msg)
-            .setPositiveButton(R.string.action_forget) { _, _ ->
-                workflow.forget(rec)
-                refresh()
-                toast(getString(R.string.record_removed))
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .create()
-        dlg.show()
-        dlg.getButton(DialogInterface.BUTTON_POSITIVE)
-            ?.setTextColor(MaterialColors.getColor(dlg.getButton(DialogInterface.BUTTON_POSITIVE),
-                MaterialAttr.colorError))
-    }
-
-    /**
-     * 阻塞式进度：打包期间禁用返回和重复点击。
-     * 现在是有百分比的确定型进度（见 [ProgressDialog]），不再是一个转圈 ——
-     * 重打包要几十秒，用户需要知道「还剩多少」，而不是只知道「在忙」。
-     */
-    private fun progressDialog(): com.huanzhi.manager.ui.ProgressDialog =
-        com.huanzhi.manager.ui.ProgressDialog(this)
-
-    /**
-     * 重命名。
-     *
-     * 分身名是打进清单里的，所以改名 = 用新名字重新打包 + 覆盖安装（等同升级），
-     * 数据不会丢。这一点必须在弹窗里讲清楚，否则用户会以为只是改个显示名。
-     */
-    private fun askRename(rec: CloneRecord) {
-        val view = DialogRenameBinding.inflate(layoutInflater)
-        view.nameInput.setText(rec.label)
-        // 光标按过滤后的实际长度算：maxLength 可能截短默认名，直接用 label.length 会越界
-        view.nameInput.setSelection(view.nameInput.text?.length ?: 0)
-        view.hint.text = "改名会重新打包，并以「更新」的方式覆盖安装；分身里的数据、登录状态都保留。"
-
-        val dlg = MaterialAlertDialogBuilder(this)
-            .setTitle("重命名")
-            .setView(view.root)
-            .setPositiveButton("保存", null)
-            .setNegativeButton("取消", null)
-            .create()
-        dlg.show()
-        dlg.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener {
-            val name = view.nameInput.text?.toString()?.trim().orEmpty()
-            if (name.isEmpty()) {
-                toast("名称不能为空")
-                return@setOnClickListener
-            }
-            if (name == rec.label) {
-                dlg.dismiss()
-                return@setOnClickListener
-            }
-            dlg.dismiss()
-            rename(rec, name)
-        }
-    }
-
-    private fun rename(rec: CloneRecord, newLabel: String) {
-        runBuild(
-            title = getString(R.string.progress_rename, newLabel),
-            onWork = { control -> workflow.rename(rec, newLabel, control) },
-            onDone = { refresh(); toast("已改名为「$newLabel」，请在系统弹窗确认更新") },
-            failPrefix = "改名失败",
-        )
-    }
-
-    private fun rebuild(rec: CloneRecord, compat: Boolean = false) {
-        runBuild(
-            title = getString(R.string.progress_repack, rec.label),
-            onWork = { control -> workflow.rebuild(rec, compat, control) },
-            onDone = { refresh(); toast("已提交安装，请在系统弹窗中确认") },
-            failPrefix = "生成失败",
-        )
-    }
-
-    /**
-     * 三类长任务的公共外壳：进度弹窗 + 取消 + 异常提示。
-     *
-     * 取消做成「尽力而为」：打包的拷贝循环每 256KB 查一次标记，通常几百毫秒内就停下；
-     * 但已经进到签名或写安装会话那一步就拦不住了 —— 那两步各自只有一次系统调用，
-     * 中间没有可以安全抽身的点。所以按钮点下去后显示「正在取消…」而不是立刻消失。
-     */
-    private fun runBuild(
-        title: String,
-        failPrefix: String,
-        onWork: suspend (BuildControl) -> Unit,
-        onDone: () -> Unit,
-    ) {
-        val cancel = java.util.concurrent.atomic.AtomicBoolean(false)
-        val dlg = progressDialog()
-        dlg.show(
-            title = title,
-            hint = getString(R.string.progress_hint_install),
-            onCancel = { cancel.set(true) },
-        )
-        lifecycleScope.launch {
-            try {
-                onWork(BuildControl(onProgress = dlg::update, isCancelled = { cancel.get() }))
-                dlg.finish(getString(R.string.progress_submitted))
-                // 让「100% 已提交」这一帧被看到，再把界面交回给系统安装框
-                kotlinx.coroutines.delay(320)
-                onDone()
-            } catch (e: BuildCancelledException) {
-                toast(getString(R.string.cancelled))
-            } catch (t: Throwable) {
-                toast("$failPrefix：${t.message ?: t.javaClass.simpleName}")
-            } finally {
-                dlg.dismiss()
-            }
-        }
-    }
-
-    /**
-     * 兼容模式重建。
-     *
-     * 「装上了但卡在启动页 / 闪退」在克隆里很常见，原因通常只有两类：
-     *   1. 应用自己在校验签名 —— 工具层无解，只能换别的多开方式；
-     *   2. 应用按名字去找资源或配置，而资源表里的包名被我们改掉了 —— 这时关掉改名就有机会好。
-     *
-     * 所以这里把两种可能都摆出来再动手，避免用户以为「兼容模式」是万能药。
-     */
-    private fun askCompatRebuild(rec: CloneRecord) {
-        MaterialAlertDialogBuilder(this)
-            .setTitle("兼容模式重建")
-            .setMessage(
-                "会重新打包并以「更新」方式覆盖安装（数据保留），区别只有一处：" +
-                    "不改动资源表 resources.arsc 里的包名。\n\n" +
-                    "适用于：分身能装上，但卡在启动页、白屏、或提示资源加载失败。\n\n" +
-                    "如果原版应用自己能正常启动、克隆版却卡住，多半是它在校验签名 —— " +
-                    "这种情况兼容模式也解决不了，只能改用系统自带的多开 / 工作资料。"
-            )
-            .setPositiveButton("开始重建") { _, _ -> rebuild(rec, compat = true) }
-            .setNegativeButton("取消", null)
-            .show()
-    }
-
-    private fun ensureInstallPermission() {
-        if (ApkInstaller.canInstall(this)) return
-        MaterialAlertDialogBuilder(this)
-            .setTitle("需要安装权限")
-            .setMessage("创建分身需要把生成好的 APK 装进系统，请允许「安装未知应用」。")
-            .setPositiveButton("去设置") { _, _ ->
-                startActivity(
-                    Intent(
-                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                        Uri.parse("package:$packageName")
-                    )
-                )
-            }
-            .setNegativeButton("稍后", null)
-            .show()
-    }
+    private fun progressDialog(): ProgressDialog = ProgressDialog(this)
 
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
 }

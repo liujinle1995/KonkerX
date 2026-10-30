@@ -201,4 +201,53 @@
     <string name="runtime_empty_title">还没有分身可以观测</string>
     <string name="runtime_empty_hint">先去创建一个分身，回来这里就能看到它占了多少存储、最近有没有启动</string>
     <string name="runtime_no_proc_access">当前系统限制了 /proc 读取，内存与进程数不显示；存储占用不受影响</string>
+
+    <!--
+        以下这批原先直接写死在 MainActivity.kt / SettingsActivity.kt 的字符串常量里。
+        写死的代价不只是没法翻译：同一个动作在两处用了不同措辞
+        （一处「保存」另一处「确定」），而这种不一致不会被任何人系统地发现。
+    -->
+
+    <!-- 与系统对账 -->
+    <string name="sync_pruned">已移除 %1$d 个已卸载的分身记录</string>
+
+    <!-- 打开 / 安装分身 -->
+    <string name="not_installed_message">「%1$s」还没装进系统。要现在安装吗？</string>
+    <string name="action_install">安装</string>
+    <string name="no_launch_entry">这个分身没有可用入口，建议重新生成</string>
+    <string name="launch_failed">启动失败：%1$s</string>
+
+    <!-- 重命名 -->
+    <string name="rename_title">重命名</string>
+    <string name="rename_hint">改名会重新打包，并以「更新」的方式覆盖安装；分身里的数据、登录状态都保留。</string>
+    <string name="action_save">保存</string>
+    <string name="rename_done">已改名为「%1$s」，请在系统弹窗确认更新</string>
+
+    <!-- 长任务结果 -->
+    <string name="rebuild_submitted">已提交安装，请在系统弹窗中确认</string>
+    <string name="build_failed">%1$s：%2$s</string>
+    <string name="fail_label_rename">改名失败</string>
+    <string name="fail_label_build">生成失败</string>
+
+    <!-- 兼容模式重建 -->
+    <string name="compat_title">兼容模式重建</string>
+    <string name="compat_message">会重新打包并以「更新」方式覆盖安装（数据保留），区别只有一处：不改动资源表 resources.arsc 里的包名。\n\n适用于：分身能装上，但卡在启动页、白屏、或提示资源加载失败。\n\n如果原版应用自己能正常启动、克隆版却卡住，多半是它在校验签名 —— 这种情况兼容模式也解决不了，只能改用系统自带的多开 / 工作资料。</string>
+    <string name="compat_start">开始重建</string>
+
+    <!-- 安装权限 -->
+    <string name="install_permission_title">需要安装权限</string>
+    <string name="install_permission_message">创建分身需要把生成好的 APK 装进系统，请允许「安装未知应用」。</string>
+    <string name="install_permission_action">去设置</string>
+    <string name="install_permission_later">稍后</string>
+
+    <!-- 平板双栏：右侧详情面板 -->
+    <string name="detail_placeholder_title">选择一个分身</string>
+    <string name="detail_placeholder_body">左边挑一个，这里会显示它的包名、版本和创建时间，以及启动、更新这类操作。</string>
+    <string name="detail_action_launch">启动</string>
+    <string name="detail_meta_pkg">包名</string>
+    <string name="detail_meta_version">版本</string>
+    <string name="detail_meta_created">创建于</string>
+    <string name="detail_status_installed">已安装</string>
+    <string name="detail_status_missing">未安装</string>
+    <string name="detail_target">原应用：%1$s</string>
 </resources>
