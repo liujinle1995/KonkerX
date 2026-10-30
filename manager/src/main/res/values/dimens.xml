@@ -28,6 +28,9 @@
     -->
     <dimen name="two_pane_gutter">16dp</dimen>
 
+    <!-- 拖首字母索引时中间弹出的那个气泡 -->
+    <dimen name="index_bubble_size">56dp</dimen>
+
     <!-- 网格列之间的沟槽；行间距（垂直）复用 space_2，两者语义不同不混用 -->
     <dimen name="grid_gutter">8dp</dimen>
 

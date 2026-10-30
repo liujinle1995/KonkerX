@@ -37,6 +37,7 @@ import com.huanzhi.manager.databinding.ActivityPickerBinding
 import com.huanzhi.manager.databinding.DialogBatchBinding
 import com.huanzhi.manager.databinding.DialogCloneNameBinding
 import com.huanzhi.manager.databinding.ItemNameEditBinding
+import com.huanzhi.manager.ui.AppIndexBar
 import com.huanzhi.manager.ui.motion.Curve
 import com.huanzhi.manager.ui.motion.Dur
 import com.huanzhi.manager.ui.motion.appear
@@ -62,6 +63,9 @@ class AppPickerActivity : AppCompatActivity() {
     /** 当前列表里真正显示的（搜索时是过滤后的子集） */
     private var shown: List<AppEntry> = emptyList()
 
+    /** 右侧首字母索引条（含拖动跟踪与首字母气泡） */
+    private lateinit var indexBar: AppIndexBar
+
     /** 交给 RecyclerView 的行：普通应用 + 一条「带加固壳」分组标题 */
     private var rows: List<AppRow> = emptyList()
 
@@ -71,38 +75,10 @@ class AppPickerActivity : AppCompatActivity() {
     private var selectionMode = false
     private val selected = LinkedHashSet<String>()
 
-    // 首字母索引：字母 → 它在列表里的位置
-    private var indexLetters: List<Char> = emptyList()
-    private var indexPositions: IntArray = IntArray(0)
-
-    /** 索引条当前用的字号（sp）。设置页改了档位后靠它判断要不要重建 */
-    private var indexSp = 0f
-
     private var progressDlg: com.huanzhi.manager.ui.ProgressDialog? = null
 
     /** 列表是否已经级联播放过（只放一次，见 cascadeFirstList） */
     private var cascaded = false
-
-    /**
-     * 首字母气泡的退场：缩到 0.85 并淡出。
-     * 只淡不缩的话，气泡像是被「擦掉」；缩一点才有收起来的实感。
-     */
-    private val bubbleHider = Runnable {
-        b.indexBubble.animate().cancel()
-        b.indexBubble.animate()
-            .alpha(0f)
-            .scaleX(0.85f)
-            .scaleY(0.85f)
-            .setDuration(Dur.SHORT_2)
-            .setInterpolator(Curve.EMPHASIZED_ACCELERATE)
-            .withEndAction {
-                b.indexBubble.visibility = View.GONE
-                b.indexBubble.alpha = 1f
-                b.indexBubble.scaleX = 1f
-                b.indexBubble.scaleY = 1f
-            }
-            .start()
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -142,7 +118,8 @@ class AppPickerActivity : AppCompatActivity() {
             applyFilter()
         }
 
-        setupIndexBar()
+        indexBar = AppIndexBar(b.indexBar, b.indexBubble, b.list)
+        indexBar.setup()
         load()
     }
 
@@ -151,9 +128,9 @@ class AppPickerActivity : AppCompatActivity() {
         // 从设置页回来时字号档位可能变了。索引条是一串动态加的 TextView，
         // 没有「改一下 textSize」的快捷路径，重建一次最省心（字母数也就二三十个）
         if (query.isBlank() && rows.isNotEmpty() &&
-            SettingsStore.indexTextSp(this) != indexSp
+            SettingsStore.indexTextSp(this) != indexBar.currentSp
         ) {
-            buildIndexBar(rows)
+            indexBar.setRows(rows)
         }
     }
 
@@ -184,7 +161,6 @@ class AppPickerActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         dismissProgress()
-        b.indexBubble.removeCallbacks(bubbleHider)
         super.onDestroy()
     }
 
@@ -242,7 +218,7 @@ class AppPickerActivity : AppCompatActivity() {
         if (searching) {
             b.indexBar.visibility = View.GONE
         } else {
-            buildIndexBar(rows)
+            indexBar.setRows(rows)
         }
     }
 
@@ -313,148 +289,6 @@ class AppPickerActivity : AppCompatActivity() {
             selected.add(app.pkg)
             applySelectionState()
         }
-    }
-
-    // ---------------- 首字母索引 ----------------
-
-    private fun setupIndexBar() {
-        b.indexBar.setOnClickListener { /* 只为无障碍里能被「点击」，实际走 onTouch */ }
-        b.indexBar.setOnTouchListener { v, ev ->
-            if (indexLetters.isEmpty()) return@setOnTouchListener false
-            when (ev.actionMasked) {
-                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                    val h = v.height.coerceAtLeast(1)
-                    val i = ((ev.y / h) * indexLetters.size).toInt()
-                        .coerceIn(0, indexLetters.size - 1)
-                    jumpTo(indexLetters[i])
-                    true
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    v.performClick()
-                    b.indexBubble.removeCallbacks(bubbleHider)
-                    b.indexBubble.postDelayed(bubbleHider, 450)
-                    true
-                }
-                else -> false
-            }
-        }
-    }
-
-    /**
-     * 首字母索引：只在非加固段里建组，末尾补一个「加」直接跳到加固段。
-     *
-     * 为什么不给加固段也建字母组：那一段整体在列表尾部，用户要么滚到底、
-     * 要么就是明确想找某个带壳应用（这时用搜索更快）。再多按字母命中一段，
-     * 索引条会翻倍变长，反而不好按。
-     */
-    private fun buildIndexBar(list: List<AppRow>) {
-        val bar = b.indexBar
-        bar.removeAllViews()
-        if (list.isEmpty()) {
-            indexLetters = emptyList()
-            indexPositions = IntArray(0)
-            bar.visibility = View.GONE
-            return
-        }
-
-        val firsts = LinkedHashMap<Char, Int>()
-        var headerAt = -1
-        list.forEachIndexed { i, row ->
-            when (row) {
-                is AppRow.Item -> firsts.getOrPut(Pinyin.keyOf(row.app.label).letter) { i }
-                is AppRow.Header -> if (headerAt < 0) headerAt = i
-            }
-        }
-        if (headerAt >= 0) firsts[HARDENED_INDEX] = headerAt
-        indexLetters = firsts.keys.toList()
-        indexPositions = firsts.values.toIntArray()
-
-        val d = resources.displayMetrics.density
-        val color = MaterialColors.getColor(bar, com.google.android.material.R.attr.colorOnSurfaceVariant)
-        // 字号来自设置（小 / 标准 / 大），真机上 11sp 被反馈太小吃不准
-        indexSp = SettingsStore.indexTextSp(this)
-        // 索引条整体 48dp 宽是为了热区达标，字母靠右渲染，观感仍是一条细边
-        val edge = (8 * d).toInt()
-        indexLetters.forEach { letter ->
-            val tv = TextView(this).apply {
-                text = letter.toString()
-                textSize = indexSp
-                gravity = Gravity.END or Gravity.CENTER_VERTICAL
-                setPadding(0, 0, edge, 0)
-                setTextColor(color)
-                layoutParams = android.widget.LinearLayout.LayoutParams(
-                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
-                )
-            }
-            bar.addView(tv)
-        }
-        bar.visibility = View.VISIBLE
-        // 约束是 top/bottom 贴住列表：高度得等列表量完才能算，所以延后一拍
-        bar.post { fitIndexBarHeight() }
-    }
-
-    /**
-     * 索引条高度跟着字母数量走，不铺满整屏 —— 只命中三五个字母时铺满会让间距大得离谱。
-     * 上限留出列表高度的余量，26 个字母也不会超出。
-     *
-     * 每一格的行高按字号推（×1.8）：字号调大后如果还按固定 20dp 排，
-     * 字母会自己叠在一起，字是大了反而更难看。
-     */
-    private fun fitIndexBarHeight() {
-        val n = indexLetters.size
-        if (n == 0) return
-        val d = resources.displayMetrics.density
-        // sp 要换算成像素得乘 scaledDensity —— 用户把系统字体调大时，
-        // 按 density 算出来的行高会比字形还矮，字母就叠在一起了
-        val per = ((indexSp.takeIf { it > 0f } ?: 13f) *
-            resources.displayMetrics.scaledDensity * 1.8f).toInt()
-        val room = (b.list.height - (40 * d).toInt()).coerceAtLeast(per * 3)
-        val want = (per * n).coerceAtMost(room)
-        val lp = b.indexBar.layoutParams as? ConstraintLayout.LayoutParams ?: return
-        if (lp.height == want) return
-        lp.height = want
-        b.indexBar.layoutParams = lp
-    }
-
-    private fun jumpTo(letter: Char) {
-        val i = indexLetters.indexOf(letter)
-        if (i < 0) return
-        val pos = indexPositions.getOrNull(i) ?: return
-        (b.list.layoutManager as? GridLayoutManager)?.scrollToPositionWithOffset(pos, 0)
-            ?: b.list.scrollToPosition(pos)
-        showBubble(letter)
-    }
-
-    /**
-     * 气泡出场：0.85 → 1 + 淡入，100ms。
-     *
-     * 拖索引条时这个函数会被连续调用（每经过一个字母一次），
-     * 所以已经可见时只换字母、不重启动画 —— 否则气泡会一直在闪。
-     */
-    private fun showBubble(letter: Char) {
-        val bubble = b.indexBubble
-        bubble.animate().cancel()
-        bubble.text = letter.toString()
-        bubble.removeCallbacks(bubbleHider)
-
-        if (bubble.visibility != View.VISIBLE) {
-            bubble.visibility = View.VISIBLE
-            bubble.alpha = 0f
-            bubble.scaleX = 0.85f
-            bubble.scaleY = 0.85f
-            bubble.animate()
-                .alpha(1f)
-                .scaleX(1f)
-                .scaleY(1f)
-                .setDuration(Dur.SHORT_2)
-                .setInterpolator(Curve.EMPHASIZED_DECELERATE)
-                .start()
-        } else {
-            bubble.alpha = 1f
-            bubble.scaleX = 1f
-            bubble.scaleY = 1f
-        }
-        bubble.postDelayed(bubbleHider, 700)
     }
 
     // ---------------- 多选 ----------------

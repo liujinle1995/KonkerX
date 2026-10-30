@@ -49,9 +49,9 @@
                 android:layout_marginStart="@dimen/space_2"
                 android:background="@drawable/bg_badge_warn"
                 android:paddingHorizontal="@dimen/space_2"
-                android:paddingVertical="2dp"
+                android:paddingVertical="@dimen/space_1"
+                android:textAppearance="?attr/textAppearanceLabelSmall"
                 android:textColor="@color/badge_warn_text"
-                android:textSize="11sp"
                 android:visibility="gone"
                 tools:text="360 加固" />
         </LinearLayout>
