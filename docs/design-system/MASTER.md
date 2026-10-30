@@ -10,6 +10,10 @@
 **生成器结论**：Minimalism & Swiss Style（企业工具、仪表盘、专业工具向），性能成本 low，
 无障碍风险 low，要求 `contrast-text-4.5 / keyboard / visible-focus / reduced-motion`。
 
+> **3.6 起基线换到 Material 3 Expressive**（Material 库 1.12.0 → 1.14.0）。
+> 主题基类为 `Theme.Material3Expressive.DayNight.NoActionBar`。下面凡是提到
+> 「M3 默认」的地方，取值都由这套基类提供。品牌色未变。
+
 ---
 
 ## 0. 对生成器输出的取舍
@@ -47,6 +51,11 @@
 | 风险徽标文字 | `@color/badge_warn_text` | `#A15C00` | `#FFC46B` |
 | 风险徽标底/边 | `@color/badge_warn_bg` / `_stroke` | 琥珀 10%/36% | 琥珀 15%/36% |
 
+> **关于「不要在 xml 里写死 hex」**：`res/values/colors.xml` 与 `values-night/colors.xml`
+> **是**令牌的定义处，写在那里是规定动作，不违规。违规的是在 `res/layout/**` 或
+> Kotlin 里直接写 `#RRGGBB`。同理，矢量图标里的 `android:fillColor="#FFFFFF"`
+> 配合 `android:tint="?attr/colorControlNormal"` 是标准写法 —— 真正的颜色由 tint 决定。
+
 > 已弃用：`?android:attr/textColorSecondary`（框架色，深浅色切换不完全受 Material 3 控制）。
 > 新代码一律 `?attr/colorOnSurfaceVariant`。
 
@@ -79,6 +88,12 @@
 | `touch_min` | 48dp | **所有**可点区域的最小边长（Android 硬指标） |
 | `touch_gap` | 8dp | 相邻可点区域的间距 |
 | `icon_lg` / `icon_md` / `icon_sm` | 24 / 20 / 16dp | 主图标 / 列表尾标 / 行内小图标 |
+
+**圆角**（`shape.xml`，3.6 新增）：`radius_xs` 8 / `radius_sm` 12 / `radius_md` 16 /
+`radius_lg` 20 / `radius_xl` 28 / `radius_pill` 9999。相邻档至少差 4dp —— 差得出来才
+看得出是设计。胶囊用 9999dp 而不是具体值，控件改高度也不会塌成圆角矩形。
+
+**列数**（`integers.xml`）：`settings_columns` 手机 1 / ≥840dp 时 2。
 
 禁止出现 1dp、2dp、14dp、18dp、26dp 这类随手值。
 文字上限：标题 1 行 `ellipsize=end`；包名 `ellipsize=middle`（保住前后缀）；任何截断都要有第二条可达路径（点进详情/菜单看全）。
@@ -130,3 +145,45 @@
 - **不引入第三方字体**：中文正文字体包会让 APK 涨 3–8MB，工具类应用不值。
 - **不做 hover / cursor 态**：触屏平台无此语义，仅保留 ripple 与 focus。
 - **不做底部导航**：一级页面只有"分身列表 / 设置"，FAB + 溢出菜单已足够，加 tab 反而多一层。
+
+---
+
+## 7. 响应式（3.6）
+
+三档断点，与 Material 3 的 window size class 一致，实现在
+`ui/adaptive/WindowSizeClass.kt`：
+
+| 档位 | 宽度 | 主页 | 选应用页 | 设置页 |
+|---|---|---|---|---|
+| COMPACT | < 600dp | 单栏列表 | 1 列 | 1 列 |
+| MEDIUM | 600–839dp | 2 列列表 | 2 列 | 1 列 |
+| EXPANDED | ≥ 840dp | **list-detail 双栏**（左列表 + 右 380dp 详情） | 3 列 | 2 列 |
+
+**为什么双栏在运行时判断，不用 `layout-sw840dp` 资源限定符**：资源限定符看的是最小
+宽度（sw）。平板横屏拖进分屏后，实际窗口宽度可能掉到 600dp 以下，但 sw 没变 ——
+按资源给双栏会把两栏各压成一条。判断依据用 `Configuration.screenWidthDp`（当前窗口
+可用宽度），配置变化会触发 Activity 重建，重建后自然拿到新值。
+
+**双栏下的点击语义**：点一行**只选中**，不启动。列表和详情同屏可见时把应用推到前台
+违反预期；要启动有面板上那个明确的「启动」按钮。单栏下仍是点即打开。
+
+**选中态三重线索**：底色（`colorPrimaryContainer`）+ 描边加粗到 2dp +
+`View.isSelected`。只换底色在深色模式下几乎看不出来；只加粗描边在 AMOLED 上像渲染
+问题；`isSelected` 是给 TalkBack 的 —— 视觉再清楚，读屏用户也拿不到这个信息。
+
+## 8. 关于验证器告警的说明
+
+跑了 `mobile-app-uiux-pro-max` 自带的 6 个验证器，结论需要人工判读：
+
+- **`COL-TOK` 23 条 error 全部是误报**。它按 Flutter / React 的约定扫，认为颜色必须
+  引自某个 tokens 文件；而 Android 的 `res/values/colors.xml` **就是**那个 tokens 文件，
+  矢量图标的 `fillColor="#FFFFFF"` + `tint="?attr/..."` 也是标准写法。
+  已逐条核实：`res/layout/**` 与 Kotlin 里**没有**任何硬编码颜色。
+- **`STATE-COV` 126 条 warning 基本是误报**。它按文件逐个要求 7 种状态，连 drawable
+  和 adapter 都算一个文件。本应用**完全离线**，没有网络请求，"offline" 不适用；
+  权限被拒的状态在确实需要权限的地方是有的（使用情况访问、安装未知应用）。
+- 真实命中并已修复的两条：**RTL 下 `setPadding` 把相对方向固化成物理左右**、
+  **6dp / 2dp 不在 4/8dp 栅格上**。
+
+后续再跑验证器时，请以这三条判读为准，不要为了把分数刷上去而在 colors.xml 里
+插抑制注释 —— 那只会让令牌文件变得难读。。

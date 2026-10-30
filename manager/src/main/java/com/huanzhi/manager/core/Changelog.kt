@@ -24,6 +24,38 @@ object Changelog {
 
     val RELEASES: List<ReleaseNote> = listOf(
         ReleaseNote(
+            versionName = "3.6",
+            versionCode = 20,
+            date = "2026-10-30",
+            headline = "平板上列表与详情并排显示，界面换到 Material 3 Expressive",
+            sections = listOf(
+                ChangeSection(
+                    "平板",
+                    listOf(
+                        "宽屏下主页改成左列表、右详情：点一下只看信息，要启动点面板上的「启动」",
+                        "设置页分组按宽度排成两列，卡片不再被拉到九百多 dp 宽",
+                        "选应用页按宽度排 1～3 列",
+                        "分屏和折叠屏按实际窗口宽度判断，拖窄了会自动退回单栏"
+                    )
+                ),
+                ChangeSection(
+                    "界面",
+                    listOf(
+                        "整体换到 Material 3 Expressive：圆角分了六档，次级动作改用 tonal 按钮",
+                        "读应用列表时显示波动进度环，不再是一个和「卡住」长得一样的转圈",
+                        "选中行同时用底色、加粗描边和读屏状态三处提示，不只靠颜色"
+                    )
+                ),
+                ChangeSection(
+                    "修复",
+                    listOf(
+                        "深色模式下页面转场和对话框动画会丢失（原来夜间主题没把这两项抄全）",
+                        "从右到左的语言下，批量条避让的左右留白不会跟着翻边"
+                    )
+                )
+            )
+        ),
+        ReleaseNote(
             versionName = "3.5",
             versionCode = 19,
             date = "2026-10-22",
