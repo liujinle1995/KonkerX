@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    圆角令牌 —— Material 3 Expressive 的形状刻度。
+
+    为什么不直接写数字：绝对值散在十几个布局里，改一次要逐个文件翻，
+    而且每次手写都会产生 ±2dp 的漂移，肉眼看着就是「每个卡片圆角不太一样」。
+
+    取值梯度刻意拉开到 6 档。Expressive 的形状语言本来就靠「不同层级的容器用
+    明显不同的圆角」来建立层级：行 16 / 卡片 20 / 大面板 28 / 浮起 32，
+    相邻档至少差 4dp，才看得出是设计而不是随手填的 16。
+
+    胶囊（pill）用 9999dp 而不是具体值：任何高度都能正确包成半圆，
+    不会因为某天改了控件高度就变成一个不圆不方的形状。
+-->
+<resources>
+    <!-- 行内小控件：角标、chip、分段控件的内部块 -->
+    <dimen name="radius_xs">8dp</dimen>
+
+    <!-- 列表条目、文本按钮 -->
+    <dimen name="radius_sm">12dp</dimen>
+
+    <!-- 卡片：分身行、设置项 -->
+    <dimen name="radius_md">16dp</dimen>
+
+    <!-- 大面板：详情面板、底部操作条、对话框内的容器 -->
+    <dimen name="radius_lg">20dp</dimen>
+
+    <!-- 浮层：批量条、Toast 容器 -->
+    <dimen name="radius_xl">28dp</dimen>
+
+    <!-- 胶囊：任意高度都包成半圆，不写死具体值，控件改高度也不会塌成圆角矩形 -->
+    <dimen name="radius_pill">9999dp</dimen>
+
+    <!-- 描边：控制在 1dp，深色下由 colorOutlineVariant 提供可见度 -->
+    <dimen name="stroke_width">1dp</dimen>
+</resources>

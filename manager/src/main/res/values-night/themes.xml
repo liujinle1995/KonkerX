@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    深色模式的差异项。
+
+    只写两行，不是漏了：其余全部继承自 Theme.HuanZhi.Base（见 values/themes.xml）。
+    旧的写法是把 Base 的每一项在 night 里重抄一遍 —— 同名 style 在限定符目录间
+    确实是整体替换而非合并，但既然 Base 已经存在，night 只要继承它再改差异项即可，
+    既不会漏也不会漂。
+
+    这里不重复声明 colorPrimary：DayNight 基类会自己走 values-night/colors.xml
+    里那份更亮的品牌色（#A8B4FF），重复声明反而容易两边改不到一起去。
+-->
 <resources>
-    <!--
-      同名 style 在 values-night 下是整体覆盖而不是合并，
-      所以这里要把 values/themes.xml 里的每一项都重写一遍。
-    -->
-    <style name="Theme.HuanZhi" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/brand</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-        <!-- 深色背景上状态栏图标必须转白 -->
+    <style name="Theme.HuanZhi" parent="Theme.HuanZhi.Base">
+        <!-- 深色背景上状态栏与导航栏图标必须转白 -->
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
     </style>

@@ -1,21 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    间距 / 尺寸令牌。
+
+    硬规则（沿用 docs/design-system/MASTER.md §3）：
+      - 所有间距落在 4/8dp 网格上，禁止 1/2/14/18/26dp 这类随手值
+      - 可点区域 ≥ 48dp，相邻可点区域间距 ≥ 8dp
+      - 布局里不写裸数字，一律引用这里的令牌
+    圆角令牌在 shape.xml（分文件只是为了让 dimens 保持单一职责）。
+-->
 <resources>
     <!--
         内容列的最大宽度。
         手机上屏幕本来就没这么宽，ConstraintLayout 会退化成 match_parent；
         平板上则把内容夹在中间，避免一行文字横跨 1200dp 没法读。
+        平板取值见 values-sw600dp / values-sw840dp 的覆盖。
     -->
     <dimen name="content_max_width">880dp</dimen>
     <dimen name="text_max_width">760dp</dimen>
 
     <!-- 列表两侧留白：平板略宽，让卡片边缘不那么贴 -->
     <dimen name="list_side_padding">12dp</dimen>
-    <dimen name="list_side_padding_tablet">28dp</dimen>
 
     <!--
-        间距令牌：全应用只用这六档，禁止 1/2/14/18/26dp 这类随手值。
-        依据 docs/design-system/MASTER.md §3 的 4/8dp 栅格。
+        双栏（list-detail）时左栏与右栏之间的沟槽。
+        COMPACT/MEDIUM 下右栏不存在，这个值也就用不上；给个默认值纯粹是为了
+        布局文件能在所有宽度下编译 —— 不填默认值会在窄屏上找不到资源。
     -->
+    <dimen name="two_pane_gutter">16dp</dimen>
+
+    <!-- 网格列之间的沟槽；行间距（垂直）复用 space_2，两者语义不同不混用 -->
+    <dimen name="grid_gutter">8dp</dimen>
+
+    <!--
+        列表底部给悬浮元素的避让高度。
+        原先在两处布局里各写了一遍 96dp，改高度会漏掉一处，让 FAB 盖住最后一行。
+    -->
+    <dimen name="fab_scroll_inset">96dp</dimen>
+
+    <!--
+        ≥840dp 时详情面板的宽度（list-detail 的右栏）。
+        取 380dp 而不是屏幕一半：右侧要放图标 + 四行元数据 + 四个动作按钮，
+        再窄元数据就得换行；再宽左侧列表就被挤得只剩几行。
+    -->
+    <dimen name="detail_pane_width">380dp</dimen>
+
+    <!-- 间距令牌：全应用只用这六档 -->
     <dimen name="space_1">4dp</dimen>
     <dimen name="space_2">8dp</dimen>
     <dimen name="space_3">12dp</dimen>
@@ -38,4 +67,10 @@
     <!-- 列表条目：主标题 1 行 + 副标题 1 行，最小高度兜住 48dp 热区 -->
     <dimen name="row_min_height">64dp</dimen>
     <dimen name="app_icon_size">44dp</dimen>
+
+    <!-- 空态插图：比列表图标大一档，但不做到「装饰画」的体量，免得抢走动作的注意力 -->
+    <dimen name="empty_art_size">72dp</dimen>
+
+    <!-- 详情面板里的大图标 -->
+    <dimen name="app_icon_size_lg">64dp</dimen>
 </resources>

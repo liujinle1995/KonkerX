@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    EXPANDED 断点（窗口宽度 ≥ 840dp，对应 Material 3 的 Expanded window size class）。
+
+    到这一档屏幕已经宽到「一行文字能被拉到 1000dp 以上」，所以主要工作是：
+      1. 内容列继续收窄 —— 不是填满，而是让读者眼睛不用左右扫
+      2. 给 list-detail 双栏腾出右栏，并在两侧留出更大的外边距
+
+    注意这里用的是最小宽度（sw）限定符；真正的双栏与否由运行时的
+    WindowSizeClass 判断 —— 分屏和折叠屏会改变实际窗口宽度但不改变 sw，
+    只看资源限定符会在这两类设备上判错。
+-->
+<resources>
+    <dimen name="content_max_width">1080dp</dimen>
+    <dimen name="text_max_width">920dp</dimen>
+    <dimen name="list_side_padding">40dp</dimen>
+
+    <!-- 双栏时左栏（列表）与右栏（详情）之间的留白 -->
+    <dimen name="two_pane_gutter">24dp</dimen>
+</resources>

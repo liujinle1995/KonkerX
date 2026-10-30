@@ -1,21 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    应用主题。
+
+    基类是 Theme.Material3Expressive.DayNight.NoActionBar —— Material 1.14 提供的
+    Material 3 Expressive 家族。相比原来的 Theme.Material3.DayNight，它带来：
+    表达性的形状刻度（shape.xml 的取值就是照它的刻度定的）、更新的排版行高，
+    以及 Wavy 进度指示器、Tonal 按钮、ButtonGroup 这批 Expressive 组件。
+
+    【为什么要拆出一个 .Base】
+    老做法是 values/ 与 values-night/ 各写一份同名 Theme.HuanZhi，各自继承 Material3。
+    问题在于：同名 style 在限定符目录之间是「整体替换」而不是「合并」，
+    而旧的 values-night 只抄了前五项，于是深色模式下丢失了
+      · windowAnimationStyle —— 页面转场退化成系统默认
+      · materialAlertDialogTheme —— 对话框丢了出入场动画
+    这类丢失只在深色下出现，白天根本测不出来。
+    现在公共项集中在 Theme.HuanZhi.Base，夜间只覆盖真正随主题变化的那两项。
+-->
 <resources>
-    <!--
-        windowAnimationStyle 一次配四个方向，所有 Activity（含以后新增的）自动一致：
-        前进 = 新页右进（300ms）+ 旧页左移淡出（200ms）
-        返回 = 上页回位（250ms）+ 当前页右出（200ms）
-        不用 overridePendingTransition 逐页写：漏一个页面就出现硬切，
-        而这种漏在测试里很难被发现。规范见 docs/design-system/MOTION.md。
-    -->
-    <style name="Theme.HuanZhi" parent="Theme.Material3.DayNight.NoActionBar">
+
+    <style name="Theme.HuanZhi.Base" parent="Theme.Material3Expressive.DayNight.NoActionBar">
         <item name="colorPrimary">@color/brand</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
+
+        <!--
+            页面转场一次配四个方向，所有 Activity（含以后新增的）自动一致。
+            不用 overridePendingTransition 逐页写：漏一个页面就是硬切，
+            而这种漏在测试里极难发现。规范见 docs/design-system/MOTION.md。
+        -->
         <item name="android:windowAnimationStyle">@style/Animation.HuanZhi.Activity</item>
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.HuanZhi.Dialog</item>
     </style>
+
+    <style name="Theme.HuanZhi" parent="Theme.HuanZhi.Base" />
 
     <style name="Animation.HuanZhi.Activity" parent="@android:style/Animation.Activity">
         <item name="android:activityOpenEnterAnimation">@anim/nav_enter_forward</item>
@@ -29,8 +48,19 @@
         <item name="android:windowExitAnimation">@anim/dialog_exit</item>
     </style>
 
-    <!-- 只覆盖动画，颜色/形状仍然继承 M3 的对话框外观 -->
-    <style name="ThemeOverlay.HuanZhi.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+    <!--
+        只覆盖动画，颜色与形状仍然继承 M3 Expressive 的对话框外观。
+        注意 Expressive 家族里没有 MaterialAlertDialog 这个后缀，
+        对应的叫 ThemeOverlay.Material3Expressive.Dialog.Alert。
+    -->
+    <style name="ThemeOverlay.HuanZhi.Dialog" parent="ThemeOverlay.Material3Expressive.Dialog.Alert">
         <item name="android:windowAnimationStyle">@style/Animation.HuanZhi.Dialog</item>
     </style>
+
+    <!--
+        Tonal 按钮：Expressive 里用来表达「次级但仍然重要」的动作。
+        TextButton 太弱、FilledButton 又与主色抢注意力，中间这一档正好给
+        「更新」「重新安装」这类第二优先级操作。
+    -->
+    <style name="Widget.HuanZhi.Button.Tonal" parent="Widget.Material3Expressive.Button.TonalButton" />
 </resources>
