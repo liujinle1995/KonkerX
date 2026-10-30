@@ -40,6 +40,9 @@
     -->
     <dimen name="fab_scroll_inset">96dp</dimen>
 
+    <!-- 批量操作条浮起时，列表底部要让出这么多（与条自身高度相当） -->
+    <dimen name="batch_bar_inset">88dp</dimen>
+
     <!--
         ≥840dp 时详情面板的宽度（list-detail 的右栏）。
         取 380dp 而不是屏幕一半：右侧要放图标 + 四行元数据 + 四个动作按钮，

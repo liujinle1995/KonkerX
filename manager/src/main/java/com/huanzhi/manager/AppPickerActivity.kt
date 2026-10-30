@@ -314,13 +314,18 @@ class AppPickerActivity : AppCompatActivity() {
         b.toolbar.menu.findItem(R.id.action_multi)?.title =
             getString(if (selectionMode) R.string.done else R.string.multi_select)
 
-        // 批量条浮在列表上，底部留出等高的空白，最后一项不会被挡住
-        b.list.setPadding(
-            b.list.paddingLeft,
+        // 批量条浮在列表上，底部留出等高的空白，最后一项不会被挡住。
+        //
+        // 用 setPaddingRelative 而不是 setPadding：列表左右的内边距在资源里是
+        // paddingStart/End（RTL 下会自动翻到另一边）。这里读出来再用 setPadding 写回去，
+        // 等于把「相对」的方向固化成了物理左右 —— RTL 下左右两侧会同时留白、方向还不翻。
+        b.list.setPaddingRelative(
+            b.list.paddingStart,
             b.list.paddingTop,
-            b.list.paddingRight,
-            if (selectionMode) (88 * resources.displayMetrics.density).toInt() else
-                (24 * resources.displayMetrics.density).toInt()
+            b.list.paddingEnd,
+            resources.getDimensionPixelSize(
+                if (selectionMode) R.dimen.batch_bar_inset else R.dimen.space_5
+            )
         )
     }
 

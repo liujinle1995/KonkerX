@@ -46,7 +46,10 @@ object ChangelogDialog {
                 sec.items.forEach { line ->
                     item.detail.addView(
                         styled(ctx, "· $line", com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
-                            .apply { setPadding(dp(ctx, 6), dp(ctx, 2), 0, 0) }
+                            // paddingStart/End 而不是 setPadding：这行缩进在 RTL 下要翻到右边。
+                            // 8/4 而不是 6/2：6 和 2 都不在 4/8dp 栅格上，同一个列表里
+                            // 别的缩进都是 8，唯独这里 6，看着就像没对齐
+                            .apply { setPaddingRelative(dp(ctx, 8), dp(ctx, 4), 0, 0) }
                     )
                 }
             }
