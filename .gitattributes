@@ -1,8 +1,25 @@
-# gradlew 是 sh 脚本：一旦被 Git 转成 CRLF，Git Bash 会报
-# "gradlew: cannot execute: required file not found" / bad interpreter。
-# 这里显式锁死 LF，不管克隆机上的 core.autocrlf 怎么配。
+# 统一行尾：源码与 build 脚本一律 LF。
+#
+# 不写这条会怎样：本机 core.autocrlf=true，Git 每次 add 都会警告
+# "LF will be replaced by CRLF"，而且同一个文件在 Windows 和其他系统上
+# 会以不同形式落盘，diff 里全是看不出意义的整文件改写。
+#
+# gradlew 是 sh 脚本，CRLF 会让 Git Bash 报 bad interpreter，必须锁 LF；
+# gradlew.bat 反过来，是 cmd 批处理，CRLF 才稳。
+*.kt text eol=lf
+*.kts text eol=lf
+*.java text eol=lf
+*.xml text eol=lf
+*.gradle text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.pro text eol=lf
+*.properties text eol=lf
 gradlew text eol=lf
 gradlew.bat text eol=crlf
+
+# 二进制
 *.jar binary
 *.jks binary
 *.png binary
