@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    「请作者喝一杯」的收款码。
+
+    几个刻意的选择：
+    · 图片放 drawable-nodpi：二维码不能被按屏幕密度重采样，缩放会糊掉边缘、
+      影响识别率；nodpi 让它保持原始像素，由 ImageView 按可用宽度等比放大。
+    · 白底不加遮罩：深色主题下二维码仍是白底黑块 —— 反色后的二维码
+      有一部分扫码器识别不了，不值得为了「融入深色」冒这个险。
+    · 图的上下留白比对话框默认 padding 小，所以这个布局自己不留内边距，
+      让图从边到边，视觉上更像一张递过来的收款卡。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <!--
+        宽高都给 wrap_content + 双向上限，让 adjustViewBounds 自己去算等比尺寸。
+        只写 maxHeight 而不给 maxWidth 的话，宽度仍被撑满对话框，
+        图片会从底部被硬裁掉一截（微信支付的 logo 正好在那儿）。
+    -->
+    <ImageView
+        android:id="@+id/qr"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:adjustViewBounds="true"
+        android:background="@android:color/white"
+        android:contentDescription="@string/support_qr_desc"
+        android:maxHeight="420dp"
+        android:maxWidth="320dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/pay_wechat" />
+
+    <TextView
+        android:id="@+id/hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="@dimen/space_5"
+        android:paddingTop="@dimen/space_3"
+        android:text="@string/support_hint"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="?attr/colorOnSurfaceVariant" />
+
+</LinearLayout>

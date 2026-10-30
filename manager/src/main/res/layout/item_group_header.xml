@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    分组标题：把「带加固壳」的应用和普通应用分开。
+    存在感要够、但不能抢列表本身的注意力 —— 所以只用一层淡淡的分隔线 + 两行小字，
+    不用卡片、不用警示色大色块（这些应用的标识靠行内徽标表达）。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="@dimen/space_4"
+    android:paddingTop="@dimen/space_5"
+    android:paddingBottom="@dimen/space_2">
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginBottom="@dimen/space_4"
+        android:background="?attr/colorOutlineVariant" />
+
+    <TextView
+        android:id="@+id/title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceTitleSmall"
+        tools:text="带加固壳 · 3 个" />
+
+    <TextView
+        android:id="@+id/hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_1"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        tools:text="这类应用会自己校验安装包，分身有较大概率卡在启动页" />
+
+</LinearLayout>

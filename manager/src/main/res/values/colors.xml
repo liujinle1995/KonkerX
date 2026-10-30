@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand">#3D5AFE</color>
+    <color name="brand_dark">#2A3EB1</color>
+
+    <!-- 图标：deep space + 霓虹双影，配色跟 App 品牌色错开一档，避免糊成一坨 -->
+    <color name="icon_bg">#0A1120</color>
+    <color name="icon_foreground_empty">#00000000</color>
+
+    <!-- 加固提示用琥珀色：既不是报错红，也不是正常灰，一眼能分出「有风险」 -->
+    <color name="badge_warn_bg">#1AF9A825</color>
+    <color name="badge_warn_stroke">#5CF9A825</color>
+    <color name="badge_warn_text">#A15C00</color>
+</resources>

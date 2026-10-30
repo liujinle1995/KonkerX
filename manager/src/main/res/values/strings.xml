@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">幻之分身</string>
+    <string name="pick_app">选择要分身的应用</string>
+    <string name="empty_title">还没有分身</string>
+    <string name="empty_hint">选一个应用，用滑杆决定一次生成几份；要跨应用批量，在选择页右上角切到「多选」</string>
+    <string name="new_clone">新建分身</string>
+    <string name="clone_name">分身名称</string>
+    <string name="clone_name_hint">例如：微信2</string>
+    <string name="create">创建</string>
+    <string name="cancel">取消</string>
+    <string name="building">正在生成分身 APK…</string>    <string name="installing">正在安装…</string>
+
+    <string name="settings">设置</string>
+    <string name="section_appearance">外观</string>
+    <string name="section_storage">存储</string>
+    <string name="section_about">关于</string>
+    <string name="theme_system">系统</string>
+    <string name="theme_mode">主题模式</string>
+    <string name="theme_light">浅色</string>
+    <string name="theme_dark">深色</string>
+    <string name="theme_hint">「系统」跟随手机的深色模式。这里只影响幻之分身自身界面，分身里的应用各用自己的主题。</string>
+    <string name="index_size">索引字母大小</string>
+    <string name="index_size_small">小</string>
+    <string name="index_size_normal">标准</string>
+    <string name="index_size_large">大</string>
+    <string name="index_size_hint">选应用页右侧那一条首字母索引的字号。觉得字母挤、按不准就调大一档；屏幕上应用很多时，调大一点更好拖。</string>
+    <string name="clear_cache">清除缓存</string>
+    <string name="version_and_updates">版本与更新</string>
+    <string name="plugin_info">插件说明</string>
+    <string name="manual_title">技术说明</string>
+    <string name="done">完成</string>
+
+    <string name="multi_select">多选</string>
+    <string name="batch_create">批量创建</string>
+    <string name="selected_apps">已选 %1$d 个应用</string>
+    <string name="batch_title">批量创建分身</string>
+    <string name="batch_count_label">每个应用生成 2 份</string>
+    <string name="batch_note">每个分身都是一个独立 APK，体积约等于原应用；创建时每一份都要在系统弹窗里确认一次，在弹窗上点取消可以中止后续。</string>
+    <string name="batch_progress_title">正在批量创建</string>
+    <string name="batch_done_title">批量创建完成</string>
+
+    <!-- 源应用升级后：分身是构建那一刻的快照，不会自动跟 -->
+    <string name="badge_updatable">可更新</string>
+    <string name="badge_updatable_desc">这份分身是 %1$s，源应用已更新到 %2$s</string>
+    <string name="action_update_all">更新全部</string>
+    <string name="action_update_all_n">更新全部（%1$d）</string>
+    <string name="update_progress_title">正在更新分身</string>
+    <string name="update_hint">每份都要在系统弹窗里确认一次。覆盖安装会保留分身里的数据和登录态。</string>
+    <string name="update_done_title">更新完成</string>
+    <string name="update_done_msg">已更新 %1$d 个分身</string>
+    <string name="update_partial">已更新 %1$d 个，%2$d 个失败</string>
+    <string name="update_stopped">已停止，更新了 %1$d 个</string>
+
+    <!-- 改包名后第一次启动：老分身还在，但归不到新版管 -->
+    <string name="legacy_clones_title">发现 %1$d 个旧版分身</string>
+    <string name="legacy_clones_msg">这些是改名之前创建的分身（包名前缀 konkerx.clone.k）。它们仍是独立应用，数据、登录态都在，照常能用；但「幻之分身」不会接管它们，也没法替它们检查源应用更新。\n\n想让它们回到管理列表：卸载后用新版重新创建一份即可。</string>
+
+    <!-- 选择应用页：搜索 + 首字母索引 -->
+    <string name="search_apps">搜索应用、拼音或首字母</string>
+    <string name="search_empty">没有匹配的应用</string>
+    <string name="index_bar_desc">字母索引，上下拖动可快速跳转</string>
+    <string name="uninstalled_removed">已移除 %1$d 个已卸载的分身记录</string>
+
+    <!-- 通用语义：图标按钮的描述必须是动作，不是图形 -->
+    <string name="more_actions">更多操作</string>
+    <string name="close">关闭</string>
+    <string name="action_create_first">创建第一个分身</string>
+    <string name="settings_footer">幻之分身 · 本机自用工具</string>
+
+    <!-- 更多操作菜单 + 破坏性确认 -->
+    <string name="action_rename">重命名</string>
+    <string name="action_rebuild">重新生成并安装</string>
+    <string name="action_compat">兼容模式重建</string>
+    <string name="action_uninstall">卸载</string>
+    <string name="action_forget">删除记录</string>
+    <string name="uninstall_title">卸载「%1$s」</string>
+    <string name="uninstall_message">会把分身从系统里卸掉，它自己的数据、登录状态一并删除，无法恢复。\n\n这里的记录会保留，之后想用可以重新生成。</string>
+    <string name="forget_title">删除记录</string>
+    <string name="forget_message_installed">「%1$s」还装在系统里（%2$s）。删除记录只是不再由这里管理它，应用本身不会被卸载。</string>
+    <string name="forget_message_missing">「%1$s」已经不在系统里了，删除记录不影响其他任何东西。</string>
+    <string name="record_removed">已删除记录</string>
+
+    <!-- 进度反馈：三处长任务共用（新建、重新打包/改名、批量） -->
+    <string name="progress_create">正在生成「%1$s」</string>
+    <string name="progress_repack">正在重新生成「%1$s」</string>
+    <string name="progress_rename">正在改名为「%1$s」</string>
+    <string name="progress_hint_install">完成后会弹出系统安装确认</string>
+    <string name="progress_submitted">已提交，等待系统确认</string>
+    <string name="cancelled">已取消</string>
+    <string name="app_list_loading">正在读取应用列表</string>
+
+    <!-- 加固应用分组：排在列表最下面 -->
+    <string name="hardening_group_title">带加固壳 · %1$d 个</string>
+    <string name="hardening_group_hint">这类应用会自己校验安装包，分身有较大概率卡在启动页</string>
+    <string name="hardening_group_index">加</string>
+
+    <!-- 请作者喝一杯 -->
+    <string name="section_support">支持作者</string>
+    <string name="support_row_title">请作者喝一杯</string>
+    <string name="support_row_sub">微信扫一扫，随缘就好</string>
+    <string name="support_title">请作者喝一杯</string>
+    <string name="support_hint">扫上面的码，或者点「保存收款码」，到微信「扫一扫」右下角的相册里选这张图。自用工具、不联网、没有内购，觉得顺手再请，不必勉强。</string>
+    <string name="support_qr_desc">微信收款码</string>
+    <string name="support_save_qr">保存收款码</string>
+    <string name="support_saved">已存到相册 Pictures/HuanZhi，微信「扫一扫」右下角进相册选它即可</string>
+    <string name="support_save_failed">保存失败，直接截屏也能扫</string>
+
+
+
+    <!-- 单个应用批量 -->
+    <string name="new_clone_title">创建分身</string>
+    <string name="clone_count_one">生成 1 个分身</string>
+    <string name="clone_count_many">生成 %1$d 个分身</string>
+    <string name="clone_count_hint_one">安装后就是一个独立应用，可独立登录、独立存储。</string>
+    <string name="clone_count_hint_many">每装一份都要在系统弹窗里确认一次；下面填的是基础名，序号会自动接上</string>
+    <string name="clone_name_auto">将命名为「%1$s · 分身N」，按顺序编号；每装一份都要在系统弹窗里确认一次</string>
+    <string name="clone_name_prefix">基础名（自动接「· 分身N」）</string>
+    <string name="name_preview_one">将命名为「%1$s」</string>
+    <string name="name_preview_many">将命名为：%1$s、%2$s … 共 %3$d 个</string>
+
+    <!-- 跨应用批量：每个应用单独命名，必要时逐份命名 -->
+    <string name="batch_names_title">分身名称</string>
+    <string name="batch_names_hint">每个应用都能单独改名；多份时自动接「· 分身N」，点「逐份」可给每一份起不同的名字</string>
+    <string name="name_per_copy">逐份</string>
+    <string name="per_copy_title">为 %1$s 逐份命名</string>
+    <string name="per_copy_hint">第 %1$d 份</string>
+    <string name="name_empty">名称不能为空</string>
+
+    <!-- 诊断 -->
+    <string name="section_diagnostics">诊断</string>
+    <string name="install_log">安装日志</string>
+    <string name="install_log_sub">建包、提交、系统回执的原始记录</string>
+    <string name="install_log_empty">还没有记录。创建过分身之后这里会有内容。</string>
+    <string name="copy">复制</string>
+
+    <!-- 加固壳检测 -->
+    <string name="hardening_hint_one">检测到「%1$s」加固壳。这类应用会自己校验安装包，分身有较大概率卡在启动页；已经确认能跑的话可以继续。</string>
+    <string name="hardening_hint_batch">其中 %1$s 带加固壳，分身可能卡在启动页；其余应用不受影响。</string>
+
+    <!-- 清理与卸载：卸载本应用时把分身一起带走 -->
+    <string name="section_reset">清理</string>
+    <string name="purge_clones">清除全部分身</string>
+    <string name="purge_clones_sub_none">当前没有分身</string>
+    <string name="purge_clones_sub">%1$d 个已装 · %2$d 条记录</string>
+    <string name="purge_clones_sub_legacy">%1$d 个已装 · %2$d 条记录 · 旧版 %3$d 个</string>
+    <string name="purge_uninstall_self">卸载幻之分身</string>
+    <string name="purge_uninstall_self_sub">先逐个卸载分身，再卸载本应用</string>
+    <string name="purge_confirm_title">清除所有分身</string>
+    <string name="purge_confirm_body">将卸载 %1$d 个分身。每卸一个系统都会弹一次确认框，点「卸载」才真的删掉；中途点取消就停下，剩下的原样保留。\n\n分身里的账号、数据和登录态会一并删除，无法恢复。</string>
+    <string name="purge_confirm_body_records_only">没有装进系统的分身，这一步只清掉本地记录与缓存，不影响任何已安装的应用。</string>
+    <string name="purge_confirm_body_legacy">还有 %1$d 个旧版分身（改名之前创建的）：它们的安装记录属于旧版包名，本应用发不出卸载请求，需要你到系统设置里手动卸载。</string>
+    <string name="purge_confirm_ok">开始卸载</string>
+    <string name="purge_running">正在卸载，请在系统弹窗点「卸载」</string>
+    <string name="purge_step">第 %1$d / %2$d 个</string>
+    <string name="purge_done">已卸载 %1$d 个分身</string>
+    <string name="purge_partial">已卸载 %1$d 个，还有 %2$d 个没动</string>
+    <string name="purge_legacy_left">另有 %1$d 个旧版分身需要手动卸载</string>
+    <string name="purge_nothing">当前没有分身</string>
+    <string name="purge_uninstall_confirm_title">卸载幻之分身</string>
+    <string name="purge_uninstall_confirm_body">会先卸载 %1$d 个分身，每个都要在系统弹窗点一次「卸载」；全部清完后打开本应用的卸载确认。\n\n中途取消也不会误伤：没卸掉的分身原样保留，本应用也不会被卸载。</string>
+    <string name="purge_uninstall_confirm_body_none">当前没有分身，直接打开系统的卸载确认。</string>
+
+    <!-- 运行概览 -->
+    <string name="runtime_stat_total">分身总数</string>
+    <string name="runtime_section_clones">逐个分身</string>
+    <string name="changelog_expand_hint">点版本展开详细变更</string>
+    <string name="runtime">运行概览</string>
+    <string name="runtime_refresh">刷新数据</string>
+    <string name="runtime_device_mem">设备内存</string>
+    <string name="runtime_used_of">已用 %1$s / 共 %2$s</string>
+    <string name="runtime_available">可用 %1$s</string>
+    <string name="runtime_summary">%1$d 个分身 · %2$d 个在运行</string>
+    <string name="runtime_clone_total">分身内存合计 %1$s</string>
+    <string name="runtime_state_running">运行中</string>
+    <string name="runtime_state_stopped">已停止</string>
+    <string name="runtime_state_missing">未安装</string>
+    <string name="runtime_state_foreground">前台运行</string>
+    <string name="runtime_state_recent">最近用过</string>
+    <string name="runtime_state_never">从未启动</string>
+    <string name="runtime_state_unknown">未观测</string>
+    <string name="runtime_state_used_before">曾经用过</string>
+    <string name="runtime_proc_count">%1$d 个进程</string>
+    <string name="runtime_thread_count">%1$d 线程</string>
+    <string name="runtime_rss">内存 %1$s</string>
+    <string name="runtime_apk_size">安装包 %1$s</string>
+    <string name="runtime_uid">UID %1$d</string>
+    <string name="runtime_occupied">占用 %1$s</string>
+    <string name="runtime_split_data">数据 %1$s</string>
+    <string name="runtime_split_cache">缓存 %1$s</string>
+    <string name="runtime_mem_line">%1$d 个进程 · 内存 %2$s</string>
+    <string name="runtime_stat_storage">分身占用</string>
+    <string name="runtime_stat_foreground">前台活跃</string>
+
+    <string name="runtime_grant_title">开启使用情况访问权限</string>
+    <string name="runtime_grant_body">系统默认不向普通应用开放其他应用的存储与使用记录。授权后这里会显示每个分身实际占用的存储（应用 / 数据 / 缓存）和最近启动时间；不授权也能创建和使用分身，只是这里只显示安装包体积。</string>
+    <string name="runtime_grant_action">去授权</string>
+
+    <string name="runtime_note_title">这些数字是怎么来的</string>
+    <string name="runtime_note_body">存储占用来自系统的 StorageStatsManager，按分身自己的 UID 统计，应用本体、用户数据、缓存分开计。运行状态与使用时间来自 UsageStatsManager 的事件流：最后一笔是「进入前台」就判定为前台运行。进程数与内存读自 /proc——绝大多数系统在 SELinux 里禁止普通应用跨 UID 读取，读不到时不会显示内存，也不会用 0 顶替。\n\n有一件事这里做不到：非 root 设备无法确认某个分身是否还在后台驻留，系统不提供这个查询。所以「前台活跃」统计的是此刻在前台的分身数量，不能当作存活总数看。设备内存卡片来自 ActivityManager.MemoryInfo，反映整机余量。</string>
+    <string name="runtime_empty_title">还没有分身可以观测</string>
+    <string name="runtime_empty_hint">先去创建一个分身，回来这里就能看到它占了多少存储、最近有没有启动</string>
+    <string name="runtime_no_proc_access">当前系统限制了 /proc 读取，内存与进程数不显示；存储占用不受影响</string>
+</resources>

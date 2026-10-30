@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- M3 standard accelerate (0.3, 0, 1, 1)：透明度退出 -->
+<pathInterpolator xmlns:android="http://schemas.android.com/apk/res/android"
+    android:pathData="M0,0 C0.3,0 1,1 1,1" />

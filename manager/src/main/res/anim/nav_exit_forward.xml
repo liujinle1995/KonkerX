@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    被新页面覆盖的旧页面：左移 3% 并淡出。
+    比进入快 100ms（200 vs 300）—— 退场永远比入场短，用户才不会觉得被拖住。
+-->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shareInterpolator="false">
+
+    <translate
+        android:duration="200"
+        android:fromXDelta="0"
+        android:interpolator="@interpolator/m3_emphasized_accelerate"
+        android:toXDelta="-3%p" />
+
+    <alpha
+        android:duration="200"
+        android:fromAlpha="1"
+        android:interpolator="@interpolator/m3_standard_accelerate"
+        android:toAlpha="0" />
+</set>

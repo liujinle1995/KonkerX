@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- M3 emphasized decelerate (0.05, 0.7, 0.1, 1)：一切「进入」用它 -->
+<pathInterpolator xmlns:android="http://schemas.android.com/apk/res/android"
+    android:pathData="M0,0 C0.05,0.7 0.1,1 1,1" />

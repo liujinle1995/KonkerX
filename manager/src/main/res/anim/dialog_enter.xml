@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    对话框出现：0.92 → 1 的中心缩放 + 淡入，250ms。
+    不用位移：对话框是「叠加在当前页面之上」的层级，位移会让人以为页面本身在动。
+-->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shareInterpolator="false">
+
+    <scale
+        android:duration="250"
+        android:fromXScale="0.92"
+        android:fromYScale="0.92"
+        android:interpolator="@interpolator/m3_emphasized_decelerate"
+        android:pivotX="50%"
+        android:pivotY="50%"
+        android:toXScale="1"
+        android:toYScale="1" />
+
+    <alpha
+        android:duration="250"
+        android:fromAlpha="0"
+        android:interpolator="@interpolator/m3_standard_decelerate"
+        android:toAlpha="1" />
+</set>

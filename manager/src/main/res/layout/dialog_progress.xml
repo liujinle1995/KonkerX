@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    长任务的进度弹窗：标题 + 百分比 + 线性进度 + 当前阶段。
+
+    以前这里只有一个转圈。转圈能说明「在忙」，但答不了用户真正关心的那个问题
+    ——「还要多久」。重打包一个 150MB 的应用要四十秒，纯转圈等于让人干等；
+    换成确定型进度条后，同样的四十秒是可预期的。
+
+    进度值由 BuildProgress 提供（阶段已按耗时加权折算），这里只负责画。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minWidth="300dp"
+    android:orientation="vertical"
+    android:paddingHorizontal="@dimen/space_5"
+    android:paddingTop="@dimen/space_5"
+    android:paddingBottom="@dimen/space_2">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
+            tools:text="正在生成「微信 · 分身1」" />
+
+        <!-- 数字比进度条的视觉长度更精确，也方便无障碍朗读 -->
+        <TextView
+            android:id="@+id/pct"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/space_3"
+            android:accessibilityLiveRegion="polite"
+            android:gravity="end"
+            android:minEms="3"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
+            android:textColor="?attr/colorPrimary"
+            tools:text="42%" />
+    </LinearLayout>
+
+    <com.google.android.material.progressindicator.LinearProgressIndicator
+        android:id="@+id/bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_3"
+        android:max="100"
+        app:trackThickness="4dp" />
+
+    <TextView
+        android:id="@+id/stage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_3"
+        android:accessibilityLiveRegion="polite"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        tools:text="打包 · 已处理 61.2 MB / 145.0 MB" />
+
+    <TextView
+        android:id="@+id/hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_1"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:visibility="gone"
+        tools:text="完成后会弹出系统安装确认"
+        tools:visibility="visible" />
+
+</LinearLayout>

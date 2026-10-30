@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色下品牌色要提亮，否则 3D5AFE 压在深色底上对比度不够 -->
+    <color name="brand">#A8B4FF</color>
+    <color name="brand_dark">#3D5AFE</color>
+    <color name="icon_bg">#2A3E8F</color>
+
+    <!-- 深色底上 #A15C00 会糊掉，换更亮的琥珀 -->
+    <color name="badge_warn_bg">#26FFB74D</color>
+    <color name="badge_warn_stroke">#5CFFB74D</color>
+    <color name="badge_warn_text">#FFC46B</color>
+</resources>

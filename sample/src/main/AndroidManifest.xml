@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      自声明权限的两种形态，用来回归分身重打包：
+        1. 本包命名空间（大部分应用）
+        2. 第三方命名空间（大量国内 SDK 这样声明，例如推送 / 广告 SDK）
+      第 2 种如果不改名，分身会和原应用撞权限名，安装直接被拒（DUPLICATE_PERMISSION）。
+    -->
+    <permission
+        android:name="com.igexin.sdk.permission.PUSH_PROVIDER"
+        android:protectionLevel="signature" />
+    <permission
+        android:name="com.huanzhi.sample.permission.OWN"
+        android:protectionLevel="normal" />
+    <uses-permission android:name="com.igexin.sdk.permission.PUSH_PROVIDER" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+      清单里刻意保留两个「老应用」特征，用来回归分身重打包：
+        1. targetSdk 停在 30（见 build.gradle.kts）。分身必须沿用原值，
+           一旦被抬到 31+，下面 MainActivity 就成非法声明。
+        2. MainActivity 带 intent-filter 却没写 android:exported。
+           targetSdk < 31 时合法（默认 true），≥ 31 时系统会直接拒装：
+           INSTALL_PARSE_FAILED_MANIFEST_MALFORMED
+    -->
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.Material3.DayNight.NoActionBar">
+
+        <activity android:name=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".SecondActivity"
+            android:exported="false" />
+    </application>
+
+</manifest>

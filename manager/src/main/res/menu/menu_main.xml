@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_runtime"
+        android:icon="@drawable/ic_pulse"
+        android:title="@string/runtime"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_settings"
+        android:icon="@drawable/ic_settings"
+        android:title="@string/settings"
+        app:showAsAction="always" />
+    <!--
+        没有可更新的分身时整项隐藏：常驻一个点了没反应的入口，
+        用户会以为是坏的。标题里的数量每次刷新时重写。
+    -->
+    <item
+        android:id="@+id/action_update_all"
+        android:title="@string/action_update_all"
+        app:showAsAction="never" />
+</menu>

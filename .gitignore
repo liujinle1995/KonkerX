@@ -1,0 +1,29 @@
+# 签名材料：绝对不要提交
+keystore.properties
+signing/
+*.jks
+*.keystore
+
+# 本机路径与构建产物
+local.properties
+.gradle/
+.kotlin/
+build/
+*/build/
+captures/
+.idea/
+.cxx/
+*.iml
+
+# 调试残留（uiautomator dump 之类）
+ui.xml
+
+# 工作区私有数据：会话记忆、改版前的源码快照备份
+.workbuddy/
+
+# 发布产物：APK / ProGuard mapping / 分发压缩包，体积大且可从源码重建。
+# dist/ 里的历史包需要留档请用别处备份，不要靠 git 存二进制
+dist/
+
+# 临时截图
+tmp_*.png

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        内容列的最大宽度。
+        手机上屏幕本来就没这么宽，ConstraintLayout 会退化成 match_parent；
+        平板上则把内容夹在中间，避免一行文字横跨 1200dp 没法读。
+    -->
+    <dimen name="content_max_width">880dp</dimen>
+    <dimen name="text_max_width">760dp</dimen>
+
+    <!-- 列表两侧留白：平板略宽，让卡片边缘不那么贴 -->
+    <dimen name="list_side_padding">12dp</dimen>
+    <dimen name="list_side_padding_tablet">28dp</dimen>
+
+    <!--
+        间距令牌：全应用只用这六档，禁止 1/2/14/18/26dp 这类随手值。
+        依据 docs/design-system/MASTER.md §3 的 4/8dp 栅格。
+    -->
+    <dimen name="space_1">4dp</dimen>
+    <dimen name="space_2">8dp</dimen>
+    <dimen name="space_3">12dp</dimen>
+    <dimen name="space_4">16dp</dimen>
+    <dimen name="space_5">24dp</dimen>
+    <dimen name="space_6">32dp</dimen>
+
+    <!--
+        可点区域硬指标：Android 要求 48dp，小于这个值手指会点偏。
+        视觉上想更小，就用透明 padding / inset 把热区撑到 48dp，别直接缩控件。
+    -->
+    <dimen name="touch_min">48dp</dimen>
+    <dimen name="touch_gap">8dp</dimen>
+
+    <!-- 图标三档，避免 20/24/28dp 混着用 -->
+    <dimen name="icon_lg">24dp</dimen>
+    <dimen name="icon_md">20dp</dimen>
+    <dimen name="icon_sm">16dp</dimen>
+
+    <!-- 列表条目：主标题 1 行 + 副标题 1 行，最小高度兜住 48dp 热区 -->
+    <dimen name="row_min_height">64dp</dimen>
+    <dimen name="app_icon_size">44dp</dimen>
+</resources>

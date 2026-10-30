@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    前进：新页面从右侧 6% 屏宽滑入 + 淡入。
+    位移刻意不用整屏 —— 主页↔选应用是高频来回路径，整屏滑会显得慢；
+    6% 已经足够表达「更深一层」。
+    位移用 emphasized decelerate，透明度用 standard decelerate（曲线分工见 MOTION.md）。
+-->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shareInterpolator="false">
+
+    <translate
+        android:duration="300"
+        android:fromXDelta="6%p"
+        android:interpolator="@interpolator/m3_emphasized_decelerate"
+        android:toXDelta="0" />
+
+    <alpha
+        android:duration="300"
+        android:fromAlpha="0"
+        android:interpolator="@interpolator/m3_standard_decelerate"
+        android:toAlpha="1" />
+</set>

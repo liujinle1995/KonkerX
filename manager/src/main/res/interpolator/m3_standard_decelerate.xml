@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- M3 standard decelerate (0, 0, 0, 1)：透明度进入比位移更平，避免淡入显得卡顿 -->
+<pathInterpolator xmlns:android="http://schemas.android.com/apk/res/android"
+    android:pathData="M0,0 C0,0 0,1 1,1" />

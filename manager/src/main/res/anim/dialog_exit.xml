@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 对话框消失：1 → 0.96 + 淡出，200ms。收敛而不是缩没，避免「啪一下不见」 -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shareInterpolator="false">
+
+    <scale
+        android:duration="200"
+        android:fromXScale="1"
+        android:fromYScale="1"
+        android:interpolator="@interpolator/m3_emphasized_accelerate"
+        android:pivotX="50%"
+        android:pivotY="50%"
+        android:toXScale="0.96"
+        android:toYScale="0.96" />
+
+    <alpha
+        android:duration="200"
+        android:fromAlpha="1"
+        android:interpolator="@interpolator/m3_standard_accelerate"
+        android:toAlpha="0" />
+</set>

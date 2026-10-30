@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- M3 emphasized accelerate (0.3, 0, 0.8, 0.15)：一切「退出」用它 -->
+<pathInterpolator xmlns:android="http://schemas.android.com/apk/res/android"
+    android:pathData="M0,0 C0.3,0 0.8,0.15 1,1" />
