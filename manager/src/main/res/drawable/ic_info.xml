@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 插件与技术说明。圆圈 + i 的两笔 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M3.6,12 A8.4,8.4 0 1 0 20.4,12 A8.4,8.4 0 1 0 3.6,12 Z"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.9" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M12,11 L12,16.6 M12,7.6 L12,7.9"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeWidth="2.1" />
+</vector>

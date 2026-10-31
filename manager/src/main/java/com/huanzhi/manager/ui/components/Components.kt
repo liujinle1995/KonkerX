@@ -189,15 +189,18 @@ fun CloneCard(
     iconPkg: String?,
     modifier: Modifier = Modifier,
     selected: Boolean = false,
+    /** 0 表示用令牌里的默认高度；平板网格传 112dp */
+    height: Dp = 0.dp,
     onClick: () -> Unit,
 ) {
     val colors = HzTheme.colors
     val d = HzTheme.dimen
+    val h = if (height > 0.dp) height else d.cardHeight
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(d.cardHeight)
+            .height(h)
             .cardSurface(
                 fill = colors.surface,
                 border = if (selected) colors.accent else Color.Transparent,
@@ -291,11 +294,17 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
 
 // ---------------------------------------------------------------- 底部导航
 
-/** 一级页签。设计稿三个，与现有三个 Activity 一一对应 */
-enum class MainTab(val labelRes: Int, val iconRes: Int) {
-    Clones(R.string.tab_clones, R.drawable.ic_grid),
-    Runtime(R.string.tab_runtime, R.drawable.ic_chart),
-    Settings(R.string.tab_settings, R.drawable.ic_settings),
+/**
+ * 一级页签。设计稿三个。
+ *
+ * [labelRes] 是底部胶囊用的短词（分身 / 概览 / 设置），[navLabelRes] 是平板侧栏
+ * 用的完整词（我的分身 / 运行概览 / 设置）。同一个页面在两个位置有两个名字，
+ * 不是重复定义：10dp 的胶囊标签放不下四个字，而侧栏里写「分身」又太像单数。
+ */
+enum class MainTab(val labelRes: Int, val iconRes: Int, val navLabelRes: Int) {
+    Clones(R.string.tab_clones, R.drawable.ic_grid, R.string.nav_clones),
+    Runtime(R.string.tab_runtime, R.drawable.ic_chart, R.string.nav_runtime),
+    Settings(R.string.tab_settings, R.drawable.ic_settings, R.string.nav_settings),
 }
 
 /**

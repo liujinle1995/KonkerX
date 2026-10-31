@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    外观（主题）。太阳：实心圆 + 8 条放射短线。
+    线用圆头（strokeLineCap round）而不是平头，和导航图标里那些圆角端点保持同一套语言。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M7,12 A5,5 0 1 0 17,12 A5,5 0 1 0 7,12 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M12,1.9 L12,3.9 M12,20.1 L12,22.1 M1.9,12 L3.9,12 M20.1,12 L22.1,12 M4.9,4.9 L6.3,6.3 M17.7,17.7 L19.1,19.1 M4.9,19.1 L6.3,17.7 M17.7,6.3 L19.1,4.9"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeWidth="1.9" />
+</vector>

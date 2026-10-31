@@ -282,4 +282,52 @@
     <string name="status_source_gone">源已卸载</string>
 
     <string name="home_add_desc">新建分身</string>
+
+    <!-- ============================ 3.7 平板 / Liquid Glass ============================ -->
+    <!--
+        侧栏导航用完整词，底部胶囊用短词。同一个页面两个名字是有意的：
+        胶囊宽约 110dp、标签 10sp，四个字会缩成一团；侧栏 220dp 宽，写「分身」
+        又像在指某一个分身。
+    -->
+    <string name="nav_clones">我的分身</string>
+    <string name="nav_runtime">运行概览</string>
+    <string name="nav_settings">设置</string>
+    <!-- 侧栏底部的一行状态：缓存占用，量自设计稿的口径 -->
+    <string name="rail_footer">缓存包 %1$s · 装完即卸</string>
+
+    <!-- 平板首页底部的运行概览摘要区 -->
+    <string name="home_section_runtime">运行概览</string>
+    <string name="home_runtime_hint">每 3 秒自动刷新</string>
+    <string name="runtime_card_total">分身总占用</string>
+    <string name="runtime_card_total_sub">%1$d 个分身 · 不含源应用</string>
+    <string name="runtime_card_foreground">当前前台</string>
+    <string name="runtime_card_foreground_sub">%1$s 在前台</string>
+    <string name="runtime_card_foreground_none">没有分身在前台</string>
+    <string name="runtime_card_cache">待清理缓存包</string>
+    <string name="runtime_card_cache_sub_zero">装完即卸，无残留</string>
+    <string name="runtime_card_cache_sub">%1$s 可释放</string>
+
+    <!-- 设置页：分组标题（「诊断」沿用上面的 section_diagnostics，「清理」沿用 section_reset） -->
+    <string name="section_storage_clean">存储与清理</string>
+
+    <!-- 设置页：行标题 -->
+    <string name="row_appearance">外观</string>
+    <string name="row_index_size">索引字母</string>
+    <string name="row_total_occupied">分身总占用</string>
+    <string name="row_pending_cache">待清理缓存包</string>
+    <string name="row_cleanup_records">清理与卸载记录</string>
+    <string name="row_install_log">安装日志</string>
+    <string name="row_version">版本</string>
+    <string name="row_plugin_doc">插件与技术说明</string>
+    <string name="row_support">请作者喝一杯</string>
+
+    <!-- 设置页：行右侧的值 -->
+    <string name="value_follow_system">跟随系统</string>
+    <string name="value_show_all">全部显示</string>
+    <string name="value_up_to_date">已是最新</string>
+    <string name="value_version">%1$s · %2$s</string>
+    <string name="value_log_count">%1$d 条记录</string>
+    <string name="value_pending_n">%1$d 个待确认</string>
+    <string name="value_qr_in_album">收款码存相册</string>
+    <string name="value_none">—</string>
 </resources>

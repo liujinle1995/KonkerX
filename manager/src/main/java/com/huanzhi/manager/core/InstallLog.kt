@@ -43,4 +43,18 @@ object InstallLog {
     } catch (t: Throwable) {
         ""
     }
+
+    /**
+     * 日志条数，只给设置页那一行显示用。
+     *
+     * 不做缓存也不做成增量计数：文件本身有 64KB 上限、撑死几百行，
+     * 读一遍的代价远小于"计数器和真实文件对不上"带来的困惑。
+     * 空行不算一条 —— 追加时的分隔空行不是记录。
+     */
+    fun count(ctx: Context): Int = try {
+        val f = file(ctx)
+        if (!f.exists()) 0 else f.useLines { it.count { line -> line.isNotBlank() } }
+    } catch (t: Throwable) {
+        0
+    }
 }

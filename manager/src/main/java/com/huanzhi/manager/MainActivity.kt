@@ -13,6 +13,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.huanzhi.manager.core.AppScanner
+import com.huanzhi.manager.core.CacheCleaner
 import com.huanzhi.manager.core.CloneRecord
 import com.huanzhi.manager.core.CloneRuntime
 import com.huanzhi.manager.core.CloneStore
@@ -29,6 +30,7 @@ import com.huanzhi.manager.core.UpdateRunner
 import com.huanzhi.manager.ui.ProgressDialog
 import com.huanzhi.manager.ui.components.MainTab
 import com.huanzhi.manager.ui.motion.Curve
+import com.huanzhi.manager.ui.nav.AppScaffold
 import com.huanzhi.manager.ui.screen.CloneCardUi
 import com.huanzhi.manager.ui.screen.CloneListScreen
 import com.huanzhi.manager.ui.screen.CloneListUiState
@@ -89,13 +91,28 @@ class MainActivity : AppCompatActivity() {
         val root = ComposeView(this).apply {
             setContent {
                 HuanZhiTheme {
-                    CloneListScreen(
-                        state = uiState,
-                        onAdd = ::openPicker,
-                        onUpdateAll = ::startUpdateAll,
-                        onCardClick = { rec -> actions.openOrInstall(rec) },
-                        onTabSelect = ::onTabSelected,
-                    )
+                    AppScaffold(
+                        selected = MainTab.Clones,
+                        onSelect = ::onTabSelected,
+                        railTitle = getString(R.string.app_name),
+                        railSubtitle = if (uiState.cards.isEmpty()) {
+                            getString(R.string.home_summary_zero, uiState.cards.size)
+                        } else {
+                            getString(
+                                R.string.home_summary,
+                                uiState.cards.size,
+                                Formats.size(uiState.totalOccupied),
+                            )
+                        },
+                        railFooter = getString(R.string.rail_footer, Formats.knownSize(uiState.cacheBytes)),
+                    ) {
+                        CloneListScreen(
+                            state = uiState,
+                            onAdd = ::openPicker,
+                            onUpdateAll = ::startUpdateAll,
+                            onCardClick = { rec -> actions.openOrInstall(rec) },
+                        )
+                    }
                 }
             }
         }
@@ -106,16 +123,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 底部导航。
+     * 底部 / 侧栏导航。
      *
-     * 「概览」「设置」目前仍跳转旧的 Activity —— 这两个页面还没迁到 Compose，
-     * 点进去会看到上一版的 Material 外观。属于迁移中间态，不是最终形态。
+     * 三个页面目前还是三个 Activity（迁移中间态）。用 REORDER_TO_FRONT 而不是普通
+     * startActivity：三个页面之间来回切时，栈里始终只有各一份，不会出现
+     * 「主页 → 设置 → 主页 → 设置」按四次返回键才退出。
      */
     private fun onTabSelected(tab: MainTab) {
         when (tab) {
             MainTab.Clones -> Unit // 已经在主页
-            MainTab.Runtime -> startActivity(Intent(this, RuntimeActivity::class.java))
-            MainTab.Settings -> startActivity(Intent(this, SettingsActivity::class.java))
+            MainTab.Runtime -> startActivity(
+                Intent(this, RuntimeActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            )
+            MainTab.Settings -> startActivity(
+                Intent(this, SettingsActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            )
         }
     }
 
@@ -208,6 +232,7 @@ class MainActivity : AppCompatActivity() {
         var total = 0L
         var running = 0
         var updatable = 0
+        var foreground = ""
         val stale = mutableListOf<CloneRecord>()
 
         val cards = recs.map { rec ->
@@ -220,6 +245,9 @@ class MainActivity : AppCompatActivity() {
 
             total += occupied
             if (rt?.running == true) running++
+            // 只取第一个在前台的。设计稿那一栏叫「当前前台」、值是个数，
+            // 事实上同时在前台的分身只可能有一个，多取无意义
+            if (foreground.isEmpty() && rt?.inForeground == true) foreground = rec.label
             if (installed && update.kind == UpdateKind.AVAILABLE) {
                 updatable++
                 stale += rec
@@ -236,12 +264,18 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
+        // 缓存体积只在这条 IO 路径上算：CacheCleaner.scan 要遍历目录树，
+        // 放到重组里会把掉帧直接送到滚动上
+        val cacheBytes = runCatching { CacheCleaner.scan(this).bytes }.getOrDefault(0L)
+
         return CloneListUiState(
             loading = false,
             cards = cards,
             totalOccupied = total,
             runningCount = running,
             updatableCount = updatable,
+            foregroundLabel = foreground,
+            cacheBytes = cacheBytes,
         ) to stale
     }
 
@@ -251,8 +285,33 @@ class MainActivity : AppCompatActivity() {
      * 体积为 0 时不写「 · 0 B」—— 拿不到占用（没授权、或记录是从别处导入的）
      * 和真的占用为零是两件事，报一个 0 会被读成后者。
      */
-    private fun metaOf(rec: CloneRecord, occupied: Long): String =
-        if (occupied > 0L) "${rec.clonePkg} · ${Formats.size(occupied)}" else rec.clonePkg
+    private fun metaOf(rec: CloneRecord, occupied: Long): String {
+        val pkg = shortPkg(rec.clonePkg)
+        return if (occupied > 0L) "$pkg · ${Formats.size(occupied)}" else pkg
+    }
+
+    /**
+     * 长包名只保留末尾几段。
+     *
+     * 卡片的副标题位只有约 190dp 宽，13sp 下放得下 22 个字符。真实包名
+     * （`com.google.android.apps.maps`）远超这个长度，而默认的尾部省略会把它压成
+     * `com.google.android.ap…` —— 一串包名的前半截都是 `com.xxx.`，等于什么都没说。
+     *
+     * 反过来从右边开始拼段、放不下了再加前缀的省略号，得到 `…android.apps.maps`：
+     * 丢掉的 `com.google` 恰好是最没有辨识度的部分。设计稿里的包名是自家生成的
+     * `huanzhi.clone.k01`（16 字符），根本不会触发这段逻辑，但真实设备上一定会。
+     */
+    private fun shortPkg(pkg: String, max: Int = 22): String {
+        if (pkg.length <= max) return pkg
+        val segs = pkg.split('.')
+        var keep = ""
+        for (i in segs.size - 1 downTo 0) {
+            val cand = segs.subList(i, segs.size).joinToString(".")
+            if (cand.length > max - 2 && keep.isNotEmpty()) break
+            keep = cand
+        }
+        return "…$keep"
+    }
 
     /**
      * 状态优先级。

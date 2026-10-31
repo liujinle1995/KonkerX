@@ -44,6 +44,17 @@ data class HzPalette(
     val navSelectedBg: Color,
     val divider: Color,
     val iconTileBg: Color,
+    /**
+     * 平板左侧栏的三档颜色。
+     *
+     * 浅色下侧栏比页面底 **略暗**（#F0F0F5 vs #F2F2F7），深色下比页面底 **略亮**
+     * （#1C1C1E vs #000000）。看着像随手取的，其实是同一个原则的两面：
+     * 侧栏要比内容区「退后一层」，而"退后"在亮底上表现为更暗、在暗底上表现为更亮。
+     * 如果两档都直接用 background 色，侧栏就只能靠一根分隔线撑着，会显得没边界。
+     */
+    val railBg: Color,
+    val railSelected: Color,
+    val railDivider: Color,
     val isDark: Boolean,
 )
 
@@ -72,8 +83,11 @@ private val LightPalette = HzPalette(
     glassFill = Color(0xF2F5F5F5),
     glassStroke = Color(0x14000000),
     navSelectedBg = Color(0xFFD2E3F6),
-    divider = Color(0x1F000000),
+    divider = Color(0xFFE5E5EA),
     iconTileBg = Color(0x0F000000),
+    railBg = Color(0xFFF0F0F5),
+    railSelected = Color(0xFFFFFFFF),
+    railDivider = Color(0xFFD8D8DE),
     isDark = false,
 )
 
@@ -102,8 +116,11 @@ private val DarkPalette = HzPalette(
     glassFill = Color(0xF2242426),
     glassStroke = Color(0x1FFFFFFF),
     navSelectedBg = Color(0xFF1F3751),
-    divider = Color(0xFF2C2C2E),
+    divider = Color(0xFF38383A),
     iconTileBg = Color(0x1FFFFFFF),
+    railBg = Color(0xFF1C1C1E),
+    railSelected = Color(0xFF3A3A3C),
+    railDivider = Color(0xFF38383A),
     isDark = true,
 )
 
@@ -125,6 +142,14 @@ data class HzTypography(
     val badge: TextStyle,
     val tab: TextStyle,
     val button: TextStyle,
+    /** 平板页内标题 24sp —— 比手机的 34sp 小一档，因为内容区旁边还有一列导航 */
+    val pageTitle: TextStyle,
+    /** 统计数值（「1.3 GB」「1」），28sp 半粗 */
+    val metric: TextStyle,
+    /** 侧栏顶部应用名，20sp 粗 */
+    val railTitle: TextStyle,
+    /** 侧栏导航项文字，15sp */
+    val railItem: TextStyle,
 )
 
 private val Typography = HzTypography(
@@ -138,6 +163,12 @@ private val Typography = HzTypography(
     badge = TextStyle(fontSize = 13.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium),
     tab = TextStyle(fontSize = 10.sp, lineHeight = 12.sp, fontWeight = FontWeight.Medium),
     button = TextStyle(fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold),
+    // 平板标题实测字身 82px @4x ≈ 20.5dp，苹方中文字身约占字号的 0.88 → 24pt
+    pageTitle = TextStyle(fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold),
+    metric = TextStyle(fontSize = 28.sp, lineHeight = 32.sp, fontWeight = FontWeight.SemiBold),
+    /** 侧栏顶部应用名，24sp 粗 —— 与内容区页标题同档，它俩是同一屏上的两个标题 */
+    railTitle = TextStyle(fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold),
+    railItem = TextStyle(fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium),
 )
 
 /**
@@ -178,10 +209,53 @@ data class HzDimens(
     val tabBarCorner: androidx.compose.ui.unit.Dp = 35.dp,
     val fabSize: androidx.compose.ui.unit.Dp = 56.dp,
     val touchMin: androidx.compose.ui.unit.Dp = 48.dp,
+
+    // ---------------------------------------------------------------- 平板档
+    /**
+     * 左侧栏宽度。设计稿实测 880px @4x = 220dp，且是**固定值**而非比例 ——
+     * 侧栏里只有 3 个导航项和两行文字，宽度再大也只是留白变多。
+     */
+    val railWidth: androidx.compose.ui.unit.Dp = 220.dp,
+    /** 侧栏导航项：48dp 高、左右各 8dp 内缩、12dp 圆角（量自 09/26 稿） */
+    val railItemHeight: androidx.compose.ui.unit.Dp = 48.dp,
+    val railItemCorner: androidx.compose.ui.unit.Dp = 12.dp,
+    val railItemInset: androidx.compose.ui.unit.Dp = 8.dp,
+    /**
+     * 平板内容区的左右边距 24dp，比手机的 16dp 更大。
+     *
+     * 不是"平板就自动加宽"，而是同一屏里要并排放两张卡：卡与卡之间 14dp，
+     * 如果外边距还是 16dp，左右两条缝比中间那条还窄，两列会被看成"一列宽卡被劈开"。
+     */
+    val contentPadding: androidx.compose.ui.unit.Dp = 24.dp,
+    /** 平板卡片 112dp 高（手机 88dp）：图标仍是 48dp，多出来的全给上下留白 */
+    val wideCardHeight: androidx.compose.ui.unit.Dp = 112.dp,
+    /** 网格列间距 14dp —— 与卡片的 112dp 高度相比略小于半行，横向排得紧、纵向才透气 */
+    val gridGap: androidx.compose.ui.unit.Dp = 14.dp,
+    /** 设置页单行高度 52dp（手机稿实测 208px @4x） */
+    val rowHeight: androidx.compose.ui.unit.Dp = 52.dp,
+    /** 设置页组内行的左内边距：图标贴边 14dp，与卡片右侧的 16dp 形成光学校正 */
+    val rowPaddingStart: androidx.compose.ui.unit.Dp = 14.dp,
 )
 
 /** 最小可点区域。低于 48dp 的按钮一律用它兜住，不靠调用方自觉 */
 val TouchMin: androidx.compose.ui.unit.Dp = 48.dp
+
+/**
+ * 设置页图标底块的颜色。
+ *
+ * 这六个色**不随深浅主题变**，和 iOS 系统设置的做法一致：
+ * 色块的职责是"这一行属于哪一类"（橙=容量、绿=缓存、红=不可逆操作），
+ * 一旦跟着主题换色，同一行在两种模式下就变成两种含义。
+ * 白图标压在这些饱和色上，深浅底都有 3:1 以上的对比，不需要再分两套。
+ */
+object HzIconTint {
+    val blue = Color(0xFF007AFF)
+    val gray = Color(0xFF8E8E93)
+    val orange = Color(0xFFFF9500)
+    val green = Color(0xFF34C759)
+    val red = Color(0xFFFF3B30)
+    val pink = Color(0xFFFF2D55)
+}
 
 val LocalHzPalette = staticCompositionLocalOf { LightPalette }
 val LocalHzTypography = staticCompositionLocalOf { Typography }

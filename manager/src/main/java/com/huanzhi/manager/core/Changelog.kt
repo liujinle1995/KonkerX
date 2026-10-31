@@ -24,6 +24,38 @@ object Changelog {
 
     val RELEASES: List<ReleaseNote> = listOf(
         ReleaseNote(
+            versionName = "3.7",
+            versionCode = 21,
+            date = "2026-10-31",
+            headline = "按设计稿重做界面：液态玻璃观感，平板改成左侧栏导航",
+            sections = listOf(
+                ChangeSection(
+                    "界面",
+                    listOf(
+                        "整体换成液态玻璃：分组卡片与导航栏有玻璃的厚度感，颜色逐档对齐 iOS 系统色",
+                        "点按会轻微缩一下再弹回来，替掉 Android 原来的涟漪",
+                        "主页与设置页换成声明式绘制，滚动不再逐行重建视图"
+                    )
+                ),
+                ChangeSection(
+                    "平板",
+                    listOf(
+                        "宽屏改成左侧栏导航 + 右侧内容，取代上一版的「左列表右详情」",
+                        "分身排成两列网格，窗口宽到能放下三张时自动变三列",
+                        "首页底部补上运行概览摘要：总占用、当前前台、待清理缓存包",
+                        "设置页四个分组按「常改的」和「偶尔点开的」分成左右两栏"
+                    )
+                ),
+                ChangeSection(
+                    "修复",
+                    listOf(
+                        "一个分身都没有时，占用体积显示成「—」，现在明确写 0 B",
+                        "长包名不再把副标题撑成一串 com.xxx.，改为保留末尾辨识度最高的几段"
+                    )
+                )
+            )
+        ),
+        ReleaseNote(
             versionName = "3.6",
             versionCode = 20,
             date = "2026-10-30",

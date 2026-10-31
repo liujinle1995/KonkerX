@@ -1,8 +1,5 @@
 package com.huanzhi.manager
 
-import com.huanzhi.manager.ui.dialog.confirmDestructive
-import com.huanzhi.manager.ui.theme.MaterialAttr
-
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ContentValues
@@ -11,79 +8,187 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
 import androidx.core.view.doOnPreDraw
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.huanzhi.manager.core.CacheCleaner
 import com.huanzhi.manager.core.Changelog
 import com.huanzhi.manager.core.CloneStore
 import com.huanzhi.manager.core.InstallLog
 import com.huanzhi.manager.core.Purge
+import com.huanzhi.manager.core.RuntimeProbe
 import com.huanzhi.manager.core.SettingsStore
-import com.huanzhi.manager.databinding.ActivitySettingsBinding
 import com.huanzhi.manager.databinding.DialogLogBinding
 import com.huanzhi.manager.databinding.DialogPayBinding
 import com.huanzhi.manager.ui.ProgressDialog
+import com.huanzhi.manager.ui.components.MainTab
 import com.huanzhi.manager.ui.motion.Curve
+import com.huanzhi.manager.ui.nav.AppScaffold
+import com.huanzhi.manager.ui.screen.SettingsScreen
+import com.huanzhi.manager.ui.screen.SettingsUiState
+import com.huanzhi.manager.ui.theme.HuanZhiTheme
+import com.huanzhi.manager.util.Formats
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/**
+ * 设置页。
+ *
+ * 3.7 起界面层迁到 Compose（与主页同一套 Liquid Glass 令牌），这个 Activity
+ * 只负责三件事：算数据、弹确认框、执行动作。
+ *
+ * 弹窗暂时仍用 Material 的 [MaterialAlertDialogBuilder] —— 确认框是"打断流程"，
+ * 用系统观感反而更稳（用户对系统对话框的肌肉记忆是可靠的）；等下一步把
+ * 破坏性确认也换成自绘版，再统一。
+ */
 class SettingsActivity : AppCompatActivity() {
 
-    private lateinit var b: ActivitySettingsBinding
+    /** 渲染状态。Compose 观察它，赋值即重绘 */
+    private var uiState by mutableStateOf(SettingsUiState())
 
     /** 正在做淡出→重建的交接，期间忽略重复点击 */
     private var switching = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        b = ActivitySettingsBinding.inflate(layoutInflater)
-        setContentView(b.root)
-
+        // 内容要画到状态栏与导航栏底下，玻璃层才会真的"浮"在内容上
+        enableEdgeToEdge()
         // 因切主题而重建时，新窗口从透明淡入
         fadeInIfNeeded()
 
-        b.toolbar.setNavigationOnClickListener { finish() }
-
-        setupTheme()
-        setupIndexSize()
-        setupRows()
-        setupReset()
+        val root = ComposeView(this).apply {
+            setContent {
+                HuanZhiTheme {
+                    AppScaffold(
+                        selected = MainTab.Settings,
+                        onSelect = ::onTabSelected,
+                        railTitle = getString(R.string.app_name),
+                        railSubtitle = if (uiState.cloneCount == 0) {
+                            getString(R.string.home_summary_zero, uiState.cloneCount)
+                        } else {
+                            getString(
+                                R.string.home_summary,
+                                uiState.cloneCount,
+                                Formats.size(uiState.totalOccupied),
+                            )
+                        },
+                        railFooter = getString(R.string.rail_footer, Formats.knownSize(uiState.cacheBytes)),
+                    ) {
+                        SettingsScreen(
+                            state = uiState,
+                            onPickTheme = ::pickTheme,
+                            onPickIndexSize = ::pickIndexSize,
+                            onOpenCleanup = ::pickCleanup,
+                            onOpenLog = ::showLog,
+                            onOpenVersion = { ChangelogDialog.show(this@SettingsActivity) },
+                            onOpenDocs = {
+                                startActivity(Intent(this@SettingsActivity, AboutActivity::class.java))
+                            },
+                            onOpenSupport = ::showSupport,
+                        )
+                    }
+                }
+            }
+        }
+        setContentView(root)
     }
 
+    /** 内容要画到状态栏与导航栏底下，玻璃层才会真的"浮"在内容上 */
     override fun onResume() {
         super.onResume()
-        refreshCacheSize()
-        // 从系统那屏「激活设备管理器」回来、或刚卸了几个分身，都要重算
-        refreshReset()
+        refresh()
+    }
+
+    private fun onTabSelected(tab: MainTab) {
+        when (tab) {
+            MainTab.Settings -> Unit
+            MainTab.Clones -> {
+                startActivity(
+                    Intent(this, MainActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                )
+                finish()
+            }
+            MainTab.Runtime -> {
+                startActivity(Intent(this, RuntimeActivity::class.java))
+            }
+        }
+    }
+
+    /**
+     * 一次性把设置页需要的所有数据算出来。
+     *
+     * 全部在 IO 线程：CacheCleaner 要遍历目录树、Purge 要问 PackageManager，
+     * 任何一个都不该在主线程做。合并成一次是因为它们各自很轻，
+     * 但分成四个 launch 会让界面连着刷新四次、每一帧都在跳数。
+     */
+    private fun refresh() {
+        lifecycleScope.launch {
+            val next = withContext(Dispatchers.IO) {
+                val stat = CacheCleaner.scan(this@SettingsActivity)
+                val snap = Purge.snapshot(this@SettingsActivity)
+                val store = CloneStore(this@SettingsActivity)
+                // 体积取 RuntimeProbe 的口径（StorageStats 优先、退化为安装包大小），
+                // 与主页那张「分身总占用」用的是同一个数 —— 两个页面报不同的数是最难解释的 bug
+                val recs = store.all()
+                val occupied = runCatching { RuntimeProbe.snapshot(this@SettingsActivity, recs) }
+                    .getOrDefault(emptyList())
+                    .fold(0L) { acc, rt -> acc + rt.occupiedBytes }
+                SettingsUiState(
+                    loading = false,
+                    themeMode = SettingsStore.themeMode(this@SettingsActivity),
+                    indexScale = SettingsStore.indexScale(this@SettingsActivity),
+                    cloneCount = recs.size,
+                    totalOccupied = occupied,
+                    cacheBytes = stat.bytes,
+                    cacheFiles = stat.files,
+                    logCount = InstallLog.count(this@SettingsActivity),
+                    pendingRecords = store.deadCount(),
+                    versionName = BuildConfig.VERSION_NAME,
+                    versionDate = Changelog.current.date,
+                )
+            }
+            if (isFinishing || isDestroyed) return@launch
+            uiState = next
+        }
     }
 
     // ---------------- 外观 ----------------
 
-    private fun setupTheme() {
-        val group = b.themeCard.themeGroup
-        group.check(
-            when (SettingsStore.themeMode(this)) {
-                SettingsStore.THEME_LIGHT -> R.id.themeLight
-                SettingsStore.THEME_DARK -> R.id.themeDark
-                else -> R.id.themeSystem
-            }
+    /**
+     * 主题选择。
+     *
+     * 三档用单选列表而不是开关：「跟随系统」不是"开/关"，它和浅色、深色是
+     * 同一个维度上的三个值。用开关会逼出"跟随系统且强制深色"这种不存在的状态。
+     */
+    private fun pickTheme() {
+        val labels = arrayOf(
+            getString(R.string.value_follow_system),
+            getString(R.string.theme_light),
+            getString(R.string.theme_dark),
         )
-        group.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (!isChecked || switching) return@addOnButtonCheckedListener
-            val mode = when (checkedId) {
-                R.id.themeLight -> SettingsStore.THEME_LIGHT
-                R.id.themeDark -> SettingsStore.THEME_DARK
-                else -> SettingsStore.THEME_SYSTEM
+        val modes = intArrayOf(
+            SettingsStore.THEME_SYSTEM,
+            SettingsStore.THEME_LIGHT,
+            SettingsStore.THEME_DARK,
+        )
+        val checked = modes.indexOf(uiState.themeMode).coerceAtLeast(0)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.row_appearance)
+            .setSingleChoiceItems(labels, checked) { dlg, which ->
+                dlg.dismiss()
+                if (modes[which] != SettingsStore.themeMode(this)) switchTheme(modes[which])
             }
-            // 只有真的变了才切：setDefaultNightMode 会重建 Activity
-            if (mode != SettingsStore.themeMode(this)) {
-                switchTheme(mode)
-            }
-        }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     /**
@@ -92,26 +197,28 @@ class SettingsActivity : AppCompatActivity() {
      * 这一档不重建 Activity：它只影响「选应用」页右侧索引条的字号，那边在 onResume
      * 里发现档位变了会自己重建索引条，不需要为了一个字号把整个设置页闪一下。
      */
-    private fun setupIndexSize() {
-        val group = b.indexSizeCard.indexSizeGroup
-        group.check(
-            when (SettingsStore.indexScale(this)) {
-                SettingsStore.INDEX_SMALL -> R.id.indexSizeSmall
-                SettingsStore.INDEX_LARGE -> R.id.indexSizeLarge
-                else -> R.id.indexSizeNormal
-            }
+    private fun pickIndexSize() {
+        val labels = arrayOf(
+            getString(R.string.index_size_small),
+            getString(R.string.index_size_normal),
+            getString(R.string.index_size_large),
         )
-        group.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (!isChecked) return@addOnButtonCheckedListener
-            SettingsStore.setIndexScale(
-                this,
-                when (checkedId) {
-                    R.id.indexSizeSmall -> SettingsStore.INDEX_SMALL
-                    R.id.indexSizeLarge -> SettingsStore.INDEX_LARGE
-                    else -> SettingsStore.INDEX_NORMAL
-                }
-            )
-        }
+        val scales = intArrayOf(
+            SettingsStore.INDEX_SMALL,
+            SettingsStore.INDEX_NORMAL,
+            SettingsStore.INDEX_LARGE,
+        )
+        val checked = scales.indexOf(uiState.indexScale).coerceAtLeast(1)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.row_index_size)
+            .setSingleChoiceItems(labels, checked) { dlg, which ->
+                dlg.dismiss()
+                SettingsStore.setIndexScale(this, scales[which])
+                uiState = uiState.copy(indexScale = scales[which])
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     /**
@@ -123,9 +230,6 @@ class SettingsActivity : AppCompatActivity() {
      * 时长按 MOTION.md #17：出 90 / 进 210。出比进短很多是刻意的 ——
      * 让「旧界面离开」几乎不可感知，注意力全落在「新界面到达」上，这才是 fade-through
      * 区别于普通交叉淡入的地方（后者两半等长，看着像同时糊了一下）。
-     *
-     * 淡的是 `decorView` 而不是内容根 View：连窗口背景一起淡，才能看到下面的主界面，
-     * 只淡内容会露出主题底色，反而更闪。
      */
     private fun switchTheme(mode: Int) {
         if (switching) return
@@ -171,94 +275,6 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    // ---------------- 各项入口 ----------------
-
-    private fun setupRows() {
-        b.rowCache.title.text = getString(R.string.clear_cache)
-        b.rowCache.sub.text = "计算中…"
-        b.rowCache.chevron.visibility = android.view.View.GONE
-        b.rowCache.root.setOnClickListener { confirmClearCache() }
-
-        b.rowUpdate.title.text = getString(R.string.version_and_updates)
-        b.rowUpdate.sub.text =
-            "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) · ${Changelog.current.date}"
-        b.rowUpdate.root.setOnClickListener { ChangelogDialog.show(this) }
-
-        b.rowAbout.title.text = getString(R.string.plugin_info)
-        b.rowAbout.sub.text = "怎么分身、能做到什么、做不到什么"
-        b.rowAbout.root.setOnClickListener {
-            startActivity(Intent(this, AboutActivity::class.java))
-        }
-
-        b.rowLog.title.text = getString(R.string.install_log)
-        b.rowLog.sub.text = getString(R.string.install_log_sub)
-        b.rowLog.root.setOnClickListener { showLog() }
-
-        b.rowSupport.title.text = getString(R.string.support_row_title)
-        b.rowSupport.sub.text = getString(R.string.support_row_sub)
-        b.rowSupport.root.setOnClickListener { showSupport() }
-    }
-
-    /**
-     * 收款码。
-     *
-     * 为什么不做「点一下就跳微信直接付」：微信把这条路封死了，不是我们没找到 API。
-     * 收款码里存的 `wxp://f2f0…` 是微信自家协议，微信支付社区对同一个问题的回复是
-     * 「暂不支持直接拉起收银台」；唤起扫一扫的 `weixin://dl/scan` 从 2021 年起只对
-     * 白名单（手机厂商自带的扫一扫）开放，第三方 App 调用是静默失败 —— 与其加一个
-     * 点了没反应的按钮，不如把能做到的最短路给出来。
-     *
-     * 能做到的最短路就是「把图存进相册」：微信扫一扫自己的相册入口是可靠的，
-     * 用户点两下就进付款页。保存走 MediaStore，API 29+ 写自己新建的图片不需要任何
-     * 权限，也不内嵌 SDK、不联网、不做「已支付」校验 —— 这就是一张静态图片，
-     * 扫码之后发生什么完全在微信里。
-     */
-    private fun showSupport() {
-        val view = DialogPayBinding.inflate(layoutInflater)
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.support_title)
-            .setView(view.root)
-            .setNeutralButton(R.string.support_save_qr) { _, _ -> saveQrToGallery() }
-            .setPositiveButton(R.string.close, null)
-            .show()
-    }
-
-    /**
-     * 把打包进 APK 的那张 PNG 原样写进相册。
-     *
-     * 用 openRawResource 直接拷字节，而不是 decode 成位图再 compress：重编码要多走一遍
-     * 采样与压缩，二维码边缘容易多出伪影，而这张图本身才 150KB，没必要为了省这点空间
-     * 去赌识别率。
-     */
-    private fun saveQrToGallery() {
-        val ok = runCatching {
-            val values = ContentValues().apply {
-                put(MediaStore.Images.Media.DISPLAY_NAME, "huanzhi-pay-${System.currentTimeMillis()}.png")
-                put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-                put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/HuanZhi")
-                // 写入期间对其它 App 不可见，避免微信的相册里闪出一个只有半截的图
-                put(MediaStore.Images.Media.IS_PENDING, 1)
-            }
-            val resolver = contentResolver
-            val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-                ?: return@runCatching false
-            val out = resolver.openOutputStream(uri) ?: return@runCatching false
-            out.use { resources.openRawResource(R.drawable.pay_wechat).use { it.copyTo(out) } }
-
-            // 不清 IS_PENDING 的话这张图永远不会出现在相册里，微信自然也选不到
-            values.clear()
-            values.put(MediaStore.Images.Media.IS_PENDING, 0)
-            resolver.update(uri, values, null, null)
-            true
-        }.getOrDefault(false)
-
-        Toast.makeText(
-            this,
-            if (ok) R.string.support_saved else R.string.support_save_failed,
-            Toast.LENGTH_LONG,
-        ).show()
-    }
-
     // ---------------- 诊断 ----------------
 
     /**
@@ -267,12 +283,10 @@ class SettingsActivity : AppCompatActivity() {
      */
     private fun showLog() {
         lifecycleScope.launch {
-            val text = withContext(Dispatchers.IO) {
-                InstallLog.tail(this@SettingsActivity, 200)
-            }
+            val text = withContext(Dispatchers.IO) { InstallLog.tail(this@SettingsActivity, 200) }
             val view = DialogLogBinding.inflate(layoutInflater)
             view.logText.text = text.ifBlank { getString(R.string.install_log_empty) }
-            val dlg = MaterialAlertDialogBuilder(this@SettingsActivity)
+            MaterialAlertDialogBuilder(this@SettingsActivity)
                 .setTitle(R.string.install_log)
                 .setView(view.root)
                 .setPositiveButton(R.string.copy) { _, _ ->
@@ -283,52 +297,67 @@ class SettingsActivity : AppCompatActivity() {
                 .setNeutralButton("清空") { _, _ ->
                     InstallLog.file(this@SettingsActivity).delete()
                     toast("日志已清空")
+                    refresh()
                 }
                 .setNegativeButton(R.string.done, null)
-                .create()
-            dlg.show()
+                .show()
         }
     }
 
-    // ---------------- 缓存 ----------------
+    // ---------------- 清理与卸载 ----------------
 
-    private fun refreshCacheSize() {
-        lifecycleScope.launch {
-            val stat = withContext(Dispatchers.IO) { CacheCleaner.scan(this@SettingsActivity) }
-            b.rowCache.sub.text = if (stat.files == 0) {
-                "当前没有占用"
-            } else {
-                "已占用 ${CacheCleaner.format(stat.bytes)} · ${stat.files} 个文件"
+    /**
+     * 「清理与卸载记录」这一个入口背后是两件程度差别很大的事，所以先让用户选，
+     * 而不是塞进同一句确认文案里。
+     */
+    private fun pickCleanup() {
+        val items = arrayOf(
+            getString(R.string.clear_cache),
+            getString(R.string.purge_clones),
+            getString(R.string.purge_uninstall_self),
+        )
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.row_cleanup_records)
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> confirmClearCache()
+                    1 -> confirmPurge()
+                    else -> confirmUninstallSelf()
+                }
             }
-        }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun confirmClearCache() {
-        val stat = CacheCleaner.scan(this)
-        val dead = CloneStore(this).deadCount()
-        if (stat.files == 0 && dead == 0) {
-            toast("缓存已经是空的")
-            return
-        }
-        val body = buildString {
-            if (stat.files > 0) {
-                append("将删除生成分身时留下的临时文件和 APK 副本，共 ")
-                append(CacheCleaner.format(stat.bytes)).append("。")
+        lifecycleScope.launch {
+            val (stat, dead) = withContext(Dispatchers.IO) {
+                CacheCleaner.scan(this@SettingsActivity) to CloneStore(this@SettingsActivity).deadCount()
             }
-            if (dead > 0) {
-                if (isNotEmpty()) append("\n\n")
-                append("另有 ").append(dead).append(
-                    " 条失效记录（安装包已删、系统里也没有这个应用），一并清掉，列表里不会再挂着点不动的条目。"
-                )
+            if (stat.files == 0 && dead == 0) {
+                toast("缓存已经是空的")
+                return@launch
             }
-            append("\n\n已经装进系统的分身不受影响，卸载后才会消失。")
+            val body = buildString {
+                if (stat.files > 0) {
+                    append("将删除生成分身时留下的临时文件和 APK 副本，共 ")
+                    append(CacheCleaner.format(stat.bytes)).append("。")
+                }
+                if (dead > 0) {
+                    if (isNotEmpty()) append("\n\n")
+                    append("另有 ").append(dead).append(
+                        " 条失效记录（安装包已删、系统里也没有这个应用），一并清掉，列表里不会再挂着点不动的条目。"
+                    )
+                }
+                append("\n\n已经装进系统的分身不受影响，卸载后才会消失。")
+            }
+            MaterialAlertDialogBuilder(this@SettingsActivity)
+                .setTitle("清除缓存")
+                .setMessage(body)
+                .setPositiveButton("清除") { _, _ -> doClear() }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
         }
-        MaterialAlertDialogBuilder(this)
-            .setTitle("清除缓存")
-            .setMessage(body)
-            .setPositiveButton("清除") { _, _ -> doClear() }
-            .setNegativeButton("取消", null)
-            .show()
     }
 
     private fun doClear() {
@@ -339,7 +368,7 @@ class SettingsActivity : AppCompatActivity() {
                 val f = CacheCleaner.clear(this@SettingsActivity)
                 f to CloneStore(this@SettingsActivity).pruneDead()
             }
-            refreshCacheSize()
+            refresh()
             val parts = buildList {
                 if (freed > 0) add("已释放 ${CacheCleaner.format(freed)}")
                 if (pruned > 0) add("清理了 $pruned 条失效记录")
@@ -348,8 +377,6 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    // ---------------- 清理与卸载 ----------------
-
     /**
      * 分身是本工具装进系统的独立 APK，卸载本应用不会带走它们。
      * 这一组入口就是补上这件事：要么只清分身，要么连本应用一起卸掉。
@@ -357,37 +384,6 @@ class SettingsActivity : AppCompatActivity() {
      * 注意这里**做不到静默**：普通应用每卸一个包，系统都要用户点一次确认框。
      * 所以入口的职责是把 N 个卸载框排好队，而不是假装能一键清空。
      */
-    private fun setupReset() {
-        b.rowPurge.title.text = getString(R.string.purge_clones)
-        b.rowPurge.root.setOnClickListener { confirmPurge() }
-
-        b.rowUninstall.title.text = getString(R.string.purge_uninstall_self)
-        b.rowUninstall.sub.text = getString(R.string.purge_uninstall_self_sub)
-        // 不可逆动作，标题用错误色，跟上面那条明确拉开层级
-        b.rowUninstall.title.setTextColor(
-            MaterialColors.getColor(
-                b.rowUninstall.title,
-                MaterialAttr.colorError
-            )
-        )
-        b.rowUninstall.root.setOnClickListener { confirmUninstallSelf() }
-    }
-
-    private fun refreshReset() {
-        lifecycleScope.launch {
-            val snap = withContext(Dispatchers.IO) { Purge.snapshot(this@SettingsActivity) }
-            if (isFinishing || isDestroyed) return@launch
-            b.rowPurge.sub.text = when {
-                snap.total == 0 && snap.records == 0 && snap.legacy.isEmpty() ->
-                    getString(R.string.purge_clones_sub_none)
-                // 旧版分身归不到这版管，但「这里还有几个分身」这件事必须让用户看见
-                snap.legacy.isNotEmpty() ->
-                    getString(R.string.purge_clones_sub_legacy, snap.total, snap.records, snap.legacy.size)
-                else -> getString(R.string.purge_clones_sub, snap.total, snap.records)
-            }
-        }
-    }
-
     private fun confirmPurge() {
         lifecycleScope.launch {
             val snap = withContext(Dispatchers.IO) { Purge.snapshot(this@SettingsActivity) }
@@ -411,9 +407,10 @@ class SettingsActivity : AppCompatActivity() {
                 .setTitle(R.string.purge_confirm_title)
                 .setMessage(body)
                 .setNegativeButton(R.string.cancel, null)
-                .confirmDestructive(this@SettingsActivity, getString(R.string.purge_confirm_ok)) {
+                .setPositiveButton(getString(R.string.purge_confirm_ok)) { _, _ ->
                     doPurge(uninstallAfter = false)
                 }
+                .show()
         }
     }
 
@@ -437,9 +434,10 @@ class SettingsActivity : AppCompatActivity() {
                 .setTitle(R.string.purge_uninstall_confirm_title)
                 .setMessage(body)
                 .setNegativeButton(R.string.cancel, null)
-                .confirmDestructive(this@SettingsActivity, getString(R.string.purge_uninstall_self)) {
+                .setPositiveButton(getString(R.string.purge_uninstall_self)) { _, _ ->
                     doPurge(uninstallAfter = true)
                 }
+                .show()
         }
     }
 
@@ -468,8 +466,7 @@ class SettingsActivity : AppCompatActivity() {
                 )
             }
             dlg.finish(getString(R.string.purge_done, out.done))
-            refreshReset()
-            refreshCacheSize()
+            refresh()
             kotlinx.coroutines.delay(420)
             dlg.dismiss()
 
@@ -485,6 +482,61 @@ class SettingsActivity : AppCompatActivity() {
                 Purge.uninstallSelf(this@SettingsActivity)
             }
         }
+    }
+
+    // ---------------- 支持作者 ----------------
+
+    /**
+     * 收款码。
+     *
+     * 为什么不做「点一下就跳微信直接付」：微信把这条路封死了，不是我们没找到 API。
+     * 收款码里存的 `wxp://f2f0…` 是微信自家协议，微信支付社区对同一个问题的回复是
+     * 「暂不支持直接拉起收银台」；唤起扫一扫的 `weixin://dl/scan` 从 2021 年起只对
+     * 白名单（手机厂商自带的扫一扫）开放，第三方 App 调用是静默失败 —— 与其加一个
+     * 点了没反应的按钮，不如把能做到的最短路给出来。
+     */
+    private fun showSupport() {
+        val view = DialogPayBinding.inflate(layoutInflater)
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.support_title)
+            .setView(view.root)
+            .setNeutralButton(R.string.support_save_qr) { _, _ -> saveQrToGallery() }
+            .setPositiveButton(R.string.close, null)
+            .show()
+    }
+
+    /**
+     * 把打包进 APK 的那张 PNG 原样写进相册。
+     *
+     * 用 openRawResource 直接拷字节，而不是 decode 成位图再 compress：重编码要多走一遍
+     * 采样与压缩，二维码边缘容易多出伪影，而这张图本身才 150KB，没必要为了省这点空间
+     * 去赌识别率。
+     */
+    private fun saveQrToGallery() {
+        val ok = runCatching {
+            val values = ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, "huanzhi-pay-${System.currentTimeMillis()}.png")
+                put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/HuanZhi")
+                // 写入期间对其它 App 不可见，避免微信的相册里闪出一个只有半截的图
+                put(MediaStore.Images.Media.IS_PENDING, 1)
+            }
+            val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                ?: return@runCatching false
+            val out = contentResolver.openOutputStream(uri) ?: return@runCatching false
+            out.use { resources.openRawResource(R.drawable.pay_wechat).use { it.copyTo(out) } }
+
+            // 不清 IS_PENDING 的话这张图永远不会出现在相册里，微信自然也选不到
+            values.clear()
+            values.put(MediaStore.Images.Media.IS_PENDING, 0)
+            contentResolver.update(uri, values, null, null)
+            true
+        }.getOrDefault(false)
+        Toast.makeText(
+            this,
+            if (ok) R.string.support_saved else R.string.support_save_failed,
+            Toast.LENGTH_LONG,
+        ).show()
     }
 
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
