@@ -37,7 +37,6 @@
     <string name="batch_title">批量创建分身</string>
     <string name="batch_count_label">每个应用生成 2 份</string>
     <string name="batch_note">每个分身都是一个独立 APK，体积约等于原应用；创建时每一份都要在系统弹窗里确认一次，在弹窗上点取消可以中止后续。</string>
-    <string name="batch_progress_title">正在批量创建</string>
     <string name="batch_done_title">批量创建完成</string>
 
     <!-- 源应用升级后：分身是构建那一刻的快照，不会自动跟 -->
@@ -82,7 +81,6 @@
     <string name="record_removed">已删除记录</string>
 
     <!-- 进度反馈：三处长任务共用（新建、重新打包/改名、批量） -->
-    <string name="progress_create">正在生成「%1$s」</string>
     <string name="progress_repack">正在重新生成「%1$s」</string>
     <string name="progress_rename">正在改名为「%1$s」</string>
     <string name="progress_hint_install">完成后会弹出系统安装确认</string>
@@ -231,7 +229,7 @@
 
     <!-- 安装权限 -->
     <string name="install_permission_title">需要安装权限</string>
-    <string name="install_permission_message">创建分身需要把生成好的 APK 装进系统，请允许「安装未知应用」。</string>
+    <string name="install_permission_message">创建分身要把生成好的 APK 装进系统，所以需要「安装未知应用」权限。开启后回来再点一次即可。</string>
     <string name="install_permission_action">去设置</string>
     <string name="install_permission_later">稍后</string>
 
@@ -385,6 +383,58 @@
     <string name="pk_hardening_tag">加固壳</string>
     <string name="pk_split_toast">分片安装包暂不支持分身</string>
     <string name="pk_next">下一步</string>
+
+    <!-- 构建进度 -->
+    <string name="bp_title">正在创建</string>
+    <string name="bp_back">返回</string>
+    <string name="bp_cancel_all">取消全部</string>
+    <string name="bp_hero_sub">已装 %1$d 份 · 还剩 %2$d 份</string>
+    <string name="bp_hero_sub_wide">已装 %1$d 份 · 还剩 %2$d 份 · 已用 %3$s</string>
+    <string name="bp_hero_sub_done">已装 %1$d 份 · 全部完成</string>
+    <string name="bp_hero_sub_base">已装 %1$d 份</string>
+    <string name="bp_footer_empty">还没有装好的分身</string>
+    <string name="bp_done_title_stop">已取消剩余队列，装了 %1$d 份</string>
+    <string name="bp_hero_sub_failed_part">· %1$d 份没装成</string>
+    <string name="bp_hero_sub_skipped_part">· %1$d 份跳过</string>
+    <string name="bp_hero_note">严格串行：一份装完才构建下一份</string>
+    <string name="bp_hero_note_wide">严格串行 · 等确认的空档提前构建下一份</string>
+    <string name="bp_act_head">轮到你操作 · 第 %1$d/%2$d 份</string>
+    <string name="bp_act_title">请在弹出的系统安装框里点「安装」</string>
+    <string name="bp_act_body">每一份都必须你亲手点一次安装，App 无法代点。点完会自动接着下一份。</string>
+    <string name="bp_act_body_wide">每一份都必须你亲手点一次安装，App 无法代点。点完会自动接着做下一份，不用切回来。</string>
+    <string name="bp_act_skip">跳过这一份</string>
+    <string name="bp_copy_diag">复制诊断</string>
+    <string name="bp_queue_title">任务队列 · %1$d 份</string>
+    <string name="bp_queue_title_plain">任务队列</string>
+    <string name="bp_queue_note">还有 %1$d 份排队中</string>
+    <string name="bp_queue_note_wide">严格串行 · 空档预构建已开启</string>
+    <string name="bp_state_installed">已安装</string>
+    <string name="bp_state_installed_time">已安装 · %1$s</string>
+    <string name="bp_state_waiting">等你点安装</string>
+    <string name="bp_state_building">构建 %1$d%%</string>
+    <string name="bp_state_ready">已就绪</string>
+    <string name="bp_state_queued">排队中</string>
+    <string name="bp_state_failed">失败</string>
+    <string name="bp_state_skipped">已跳过</string>
+    <string name="bp_state_cancelled">已取消</string>
+    <string name="bp_meta_queued">待构建</string>
+    <string name="bp_detail_source">源应用</string>
+    <string name="bp_detail_copies">创建份数</string>
+    <string name="bp_detail_space">预估占用</string>
+    <string name="bp_detail_pkgs">副本包名</string>
+    <string name="bp_pkg_pending">构建时分配</string>
+    <string name="bp_footer_keep">已装 %1$d 份会保留</string>
+    <string name="bp_footer_note">缓存包已随装随删</string>
+    <string name="bp_footer_note_stop">取消后不再继续，缓存包已随装随删</string>
+    <string name="bp_cancel_rest">取消剩余 %1$d 份</string>
+    <string name="bp_done_head">全部完成 · %1$d 份</string>
+    <string name="bp_done_title">%1$d 个分身已就绪</string>
+    <string name="bp_done_body">装好的分身各自是独立的 App，数据互不相通。回列表就能看到它们。</string>
+    <string name="bp_failed_title">有 %1$d 份没装成</string>
+    <string name="bp_failed_body">已装好的那几份不受影响。失败原因已写进安装日志，可以复制出来排查。</string>
+    <string name="bp_footnote_idle">任一份失败都会写进安装日志，可复制诊断</string>
+    <string name="bp_footnote">按当前速度剩余约 %1$s · 任一份失败都会写进安装日志，可复制诊断</string>
+    <string name="bp_elapsed">%1$d 秒</string>
     <string name="pk_next_total">下一步 · 共 %1$d 份</string>
     <string name="pk_selected_header">已选应用</string>
     <string name="pk_selected_count">%1$d 个 · 共 %2$d 份</string>

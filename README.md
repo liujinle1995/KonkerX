@@ -371,6 +371,7 @@ D:\app\KonkerX\
 │           ├── MainActivity.kt          分身列表、启动、长按菜单、运行概览 / 设置入口
 │           ├── AppPickerActivity.kt     选应用壳：扫描 / 过滤 / 勾选 / 建包编排（3.9 起界面在 screen/AppPickerScreen.kt）
 │           ├── NamingDialog.kt          逐份命名弹窗（一份一个输入框）
+│           ├── BuildActivity.kt         构建进度页宿主：批次状态 → 界面状态（3.10 起界面在 screen/BuildScreen.kt）
 │           ├── RuntimeActivity.kt       运行概览：三张统计卡、分色占用条、逐行体积与状态
 │           ├── SettingsActivity.kt      外观 / 存储 / 关于
 │           ├── AboutActivity.kt         插件说明（精简一屏）
@@ -383,7 +384,7 @@ D:\app\KonkerX\
 │           │   ├── glass/               液态玻璃材质与按压缩放
 │           │   ├── components/          卡片、图标块、底部胶囊、侧栏
 │           │   ├── nav/AppScaffold.kt   同一份内容两种导航：底部胶囊 / 左侧栏
-│           │   ├── screen/              主页、选应用、运行概览、设置四屏（手机 + 平板两套排布）
+│           │   ├── screen/              主页、选应用、运行概览、设置、构建进度五屏（手机 + 平板两套排布；构建页宽高都够才双栏）
 │           │   ├── dialog/              自绘玻璃弹窗：确认 / 单选 / 动作选单三种形态
 │           │   ├── adaptive/            窗口宽度 → COMPACT / MEDIUM / EXPANDED
 │           │   └── motion/              转场曲线与级联
@@ -397,6 +398,7 @@ D:\app\KonkerX\
 │               ├── ApkVerifier.kt       ★ 建包自检：包名 / 签名 / 权限撞名
 │               ├── CloneWorkflow.kt     编排：prepare（构建）/ install / rename
 │               ├── BatchRunner.kt       批量调度：串行构建 + 安装 + 等回执
+│               ├── InstallWait.kt       等一次安装回执（成功 / 失败 / 跳过 -2）
 │               ├── ApkInstaller.kt      PackageInstaller 会话安装 / 卸载
 │               ├── InstallReceiver.kt   安装结果回调 + INSTALL_FAILED_* 翻译
 │               ├── PackageGoneReceiver.kt 卸载广播 → 删掉对应记录

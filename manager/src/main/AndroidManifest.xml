@@ -43,6 +43,11 @@
             android:label="@string/pick_app" />
 
         <activity
+            android:name=".BuildActivity"
+            android:exported="false"
+            android:label="@string/bp_title" />
+
+        <activity
             android:name=".RuntimeActivity"
             android:exported="false"
             android:label="@string/runtime" />

@@ -50,6 +50,22 @@ internal class InstallWait(private val pkg: String) {
             definitive = false,
         )
 
+    /**
+     * 用户点「跳过这一份」/「取消剩余」时，不必再等系统回执。
+     *
+     * 返回的 code -2 是个特殊值：它既不是失败也不是取消 —— 包已经打好了，
+     * 只是用户不想现在装。调用方要把它记成「未安装」并**保留记录**，
+     * 让用户随时能点它补装；当成失败处理会顺手把记录删掉，包就白打了。
+     *
+     * [fired] 的 CAS 是必须的：放弃等待的那一瞬间，系统回执可能正好到达，
+     * 两边都往里写会让循环看到两个不同的结果。
+     */
+    fun abandon() {
+        if (fired.compareAndSet(false, true)) {
+            slot.complete(InstallOutcome(-2, "已跳过", definitive = false))
+        }
+    }
+
     companion object {
         /**
          * 等一份装完要多久，跟包体积强相关：几十 MB 的包写到 session、解压、dexopt

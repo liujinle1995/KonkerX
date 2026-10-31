@@ -5,8 +5,12 @@ import android.content.ClipboardManager
 import android.content.DialogInterface
 import android.os.Build
 import android.os.Bundle
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.view.View
 import android.widget.Button
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -35,7 +39,6 @@ import com.huanzhi.manager.core.TemplateSpec
 import com.huanzhi.manager.databinding.DialogBatchBinding
 import com.huanzhi.manager.databinding.DialogCloneNameBinding
 import com.huanzhi.manager.databinding.ItemNameEditBinding
-import com.huanzhi.manager.ui.ProgressDialog
 import com.huanzhi.manager.ui.adaptive.WindowSizeClass
 import com.huanzhi.manager.ui.adaptive.WindowSizeClasses
 import com.huanzhi.manager.ui.screen.AppPickerScreen
@@ -90,7 +93,6 @@ class AppPickerActivity : AppCompatActivity() {
 
     private var wide = false
 
-    private var progressDlg: ProgressDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -129,30 +131,11 @@ class AppPickerActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        // 批量在 Application 级协程里跑，转屏或被系统回收后重建都能重新挂上
-        if (BatchRunner.isRunning) {
-            BatchRunner.onProgress = ::renderProgress
-            BatchRunner.onDone = ::onBatchDone
-            showProgressDialog()
-            BatchRunner.lastProgress?.let { renderProgress(it) }
-        } else if (BatchRunner.lastSummary != null && progressDlg != null) {
-            val s = BatchRunner.lastSummary ?: return
-            BatchRunner.clearSummary()
-            dismissProgress()
-            onBatchDone(s)
-        }
-    }
-
-    override fun onStop() {
-        super.onStop()
-        if (BatchRunner.isRunning) {
-            BatchRunner.onProgress = null
-            BatchRunner.onDone = null
-        }
+        // 这一页不再需要接管批量的进度：构建/安装全程都在独立的构建进度页上，
+        // 从选应用页点下去的那一刻就交接过去了
     }
 
     override fun onDestroy() {
-        dismissProgress()
         super.onDestroy()
     }
 
@@ -330,6 +313,30 @@ class AppPickerActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * 没装权限时的统一出口。
+     *
+     * 这里原来只弹一句 toast，一秒钟就没了 —— 而「没有安装权限」恰恰是**新装之后的默认状态**：
+     * 用户点哪一行都没反应，只会以为应用坏了。换成弹窗，直接给一个「去设置」。
+     */
+    private fun ensureInstallPermission(): Boolean {
+        if (ApkInstaller.canInstall(this)) return true
+        glassAlert(
+            title = getString(R.string.install_permission_title),
+            message = getString(R.string.install_permission_message),
+            confirmLabel = getString(R.string.install_permission_action),
+            cancelLabel = getString(R.string.install_permission_later),
+        ) {
+            startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:$packageName")
+                )
+            )
+        }
+        return false
+    }
+
     private fun onRowClick(app: PickerAppUi) {
         if (!app.supported) {
             // 行本身已经灰了，但仍然说明一句：不点一下是不会知道"为什么不行"的
@@ -371,10 +378,7 @@ class AppPickerActivity : AppCompatActivity() {
      *   · 想给某一份单独起名，点「逐份」逐条改。
      */
     private fun askClone(app: AppEntry) {
-        if (!ApkInstaller.canInstall(this)) {
-            toast("请先允许「安装未知应用」")
-            return
-        }
+        if (!ensureInstallPermission()) return
 
         val used = CloneStore(this).all().size
         val maxTotal = (999 - used).coerceAtLeast(0)
@@ -521,39 +525,34 @@ class AppPickerActivity : AppCompatActivity() {
     /**
      * 单份创建。
      *
-     * 「转圈」只说「在忙」，说不清还要多久 —— 一个 150MB 的应用要四十秒。
-     * 所以用带百分比的进度弹窗：阶段（准备 / 打包 / 签名 / 自检 / 安装）+ 已处理字节数，
-     * 等待变成可预期的事。
+     * 走的是和批量完全相同的路径（[BatchRunner] + 构建进度页），只是队列里只有一份。
+     * 以前单份是一条独立代码路（CloneWorkflow.createAndInstall + 进度弹窗），
+     * 结果是同一个应用「建一份」和「建两份」看到的是两套界面 —— 用户没法把两次的经验
+     * 互相套用，而这两件事的等待时间其实一模一样（都要重打一遍整包）。
      */
     private fun create(app: AppEntry, name: String) {
-        val cancel = java.util.concurrent.atomic.AtomicBoolean(false)
-        val dlg = com.huanzhi.manager.ui.ProgressDialog(this)
-        progressDlg = dlg
-        dlg.show(
-            title = getString(R.string.progress_create, name),
-            hint = getString(R.string.progress_hint_install),
-            onCancel = { cancel.set(true) },
+        val store = CloneStore(this)
+        val usedNames = store.all().mapTo(HashSet()) { it.label }
+        val plan = BatchRunner.Plan(
+            targetPkg = app.pkg,
+            targetLabel = app.label,
+            copies = 1,
+            names = listOf(store.uniqueName(name, usedNames)),
         )
-        lifecycleScope.launch {
-            try {
-                val rec = workflow.createAndInstall(
-                    app.pkg, app.label, name,
-                    BuildControl(onProgress = dlg::update, isCancelled = { cancel.get() }),
-                )
-                dlg.finish(getString(R.string.progress_submitted))
-                // 让「100% 已提交」这一帧被看到，再把界面交给系统安装框
-                kotlinx.coroutines.delay(320)
-                toast("${rec.label} 已生成，请在系统弹窗中确认安装")
-                finish()
-            } catch (e: BuildCancelledException) {
-                toast(getString(R.string.cancelled))
-            } catch (t: Throwable) {
-                showError("生成失败", t.message ?: t.javaClass.simpleName)
-            } finally {
-                dlg.dismiss()
-                progressDlg = null
-            }
-        }
+        val need = StorageCheck.estimateNeeded(StorageCheck.sourceApkSize(this, app.pkg), 1)
+        BuildActivity.start(
+            this,
+            BuildActivity.Request(
+                plans = listOf(plan),
+                sourcePkg = app.pkg,
+                sourceLabel = app.label,
+                copyCount = 1,
+                estimatedBytes = need,
+                freeBytes = StorageCheck.freeBytes(this),
+                nameMode = "单个",
+            ),
+        )
+        finish()
     }
 
     // ---------------- 批量创建 ----------------
@@ -573,10 +572,7 @@ class AppPickerActivity : AppCompatActivity() {
             toast("先勾选要分身的应用")
             return
         }
-        if (!ApkInstaller.canInstall(this)) {
-            toast("请先允许「安装未知应用」")
-            return
-        }
+        if (!ensureInstallPermission()) return
 
         // 用全量列表而不是当前过滤结果：搜索状态下勾选的几个应用，
         // 不会因为输入框里还留着关键字就悄悄漏建
@@ -732,9 +728,17 @@ class AppPickerActivity : AppCompatActivity() {
         // **不要**自己再包一层 ScrollView：MaterialAlertDialog 在内容超高时会自己套一层，
         // 外面再套一层的话手势会被里层吃掉（里层没有可滚范围），看上去就是"内容被截断、
         // 而且划不动"。交给它自己处理，再顺手把这一屏用不到的说明收起来。
+        // 横屏手机只有 411dp 高：标题 + 内容 + 按钮塞不进一屏时，Material 那一层
+        // 是直接裁掉超出部分（「共 N 个分身」被压成一条线）。矮窗口里自己套一层滚动，
+        // 高窗口保持原样 —— 那里 Material 会自己处理，双层滚动会互相抢手势
+        val body: View = if (resources.configuration.screenHeightDp < 480) {
+            ScrollView(this).apply { addView(view.root) }
+        } else {
+            view.root
+        }
         val dlg = MaterialAlertDialogBuilder(this)
             .setTitle(R.string.batch_title)
-            .setView(view.root)
+            .setView(body)
             .setPositiveButton(R.string.batch_create, null)
             .setNegativeButton(R.string.cancel, null)
             .create()
@@ -776,13 +780,17 @@ class AppPickerActivity : AppCompatActivity() {
                     "\n\n空间不足时安装会被系统中断，建议先减少份数或清理空间。",
                 confirmLabel = "仍然继续",
                 cancelLabel = getString(R.string.cancel),
-            ) { launchBatch(entries) }
+            ) { launchBatch(entries, need, free) }
             return
         }
-        launchBatch(entries)
+        launchBatch(entries, need, free)
     }
 
-    private fun launchBatch(entries: List<Pair<AppEntry, List<String>>>) {
+    private fun launchBatch(
+        entries: List<Pair<AppEntry, List<String>>>,
+        need: Long,
+        free: Long,
+    ) {
         val store = CloneStore(this)
         // 逐份命名允许用户把几份起成同一个名字，这里统一兜底：撞了就加 (2)
         val usedNames = store.all().mapTo(HashSet()) { it.label }
@@ -794,111 +802,21 @@ class AppPickerActivity : AppCompatActivity() {
         selected.clear()
         push()
 
-        BatchRunner.onProgress = ::renderProgress
-        BatchRunner.onDone = ::onBatchDone
-        showProgressDialog()
-        renderProgress(BatchRunner.Progress(0, plans.sumOf { it.copies }, "准备中…"))
-        BatchRunner.start(this, plans)
-    }
-
-    private fun showProgressDialog() {
-        if (progressDlg?.isShowing == true) return
-        val dlg = com.huanzhi.manager.ui.ProgressDialog(this)
-        progressDlg = dlg
-        // 批量中途停下会把队列留在半截状态（前几份装好、后几份搁置），
-        // 所以这里不提供取消，只负责把「到第几份、在做什么」讲清楚
-        dlg.show(title = getString(R.string.batch_progress_title), onCancel = null)
-    }
-
-    private fun renderProgress(p: BatchRunner.Progress) {
-        progressDlg?.update((p.fraction * 100).toInt(), p.text)
-    }
-
-    private fun dismissProgress() {
-        progressDlg?.dismiss()
-        progressDlg = null
-    }
-
-    private fun onBatchDone(s: BatchRunner.Summary) {
-        dismissProgress()
-        BatchRunner.clearSummary()
-
-        val sb = StringBuilder()
-        sb.append("成功创建并安装 ${s.ok} 个分身。")
-        if (s.cancelled) {
-            sb.append("\n\n已在系统弹窗上取消，后续未创建。")
-            sb.append("已经生成的包留在列表里，显示为「未安装」，随时可以点它补装。")
-        }
-        val common = s.commonReason
-        if (s.failed.isNotEmpty()) {
-            if (common != null) {
-                // 五条一模一样的原因没必要念五遍，说一次再说说是哪几份
-                sb.append("\n\n${s.failed.size} 份都是同一个原因：")
-                sb.append(common)
-                sb.append("\n\n涉及：")
-                sb.append(s.failed.joinToString("、") { it.name })
-            } else {
-                sb.append("\n\n未完成的项：")
-                s.failed.take(8).forEach {
-                    sb.append("\n· ").append(it.name).append("：").append(it.reason)
-                }
-                if (s.failed.size > 8) sb.append("\n… 另有 ${s.failed.size - 8} 项")
-            }
-            hintFor(common)?.let { sb.append("\n\n").append(it) }
-        }
-
-        glassAlert(
-            title = getString(R.string.batch_done_title),
-            message = sb.toString(),
-            confirmLabel = getString(R.string.done),
-            neutralLabel = if (s.failed.isNotEmpty()) "复制详情" else null,
-            dismissible = false,
-            onNeutral = { copyDiagnostics(s) },
-        ) { finish() }
-    }
-
-    /**
-     * 原因不确定时，让用户能把原始状态一次性复制出来。
-     * 光看「安装失败」谁也判断不了，日志里才有 INSTALL_FAILED_* 这类真凭实据。
-     */
-    private fun copyDiagnostics(s: BatchRunner.Summary) {
-        val text = buildString {
-            append("幻之分身 ").append(BuildConfig.VERSION_NAME)
-                .append(" (").append(BuildConfig.VERSION_CODE).append(")")
-            append(" · Android ").append(Build.VERSION.RELEASE)
-                .append(" (API ").append(Build.VERSION.SDK_INT).append(")")
-            append(" · ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL)
-            append('\n')
-            if (s.failed.isNotEmpty()) {
-                append("失败项：\n")
-                s.failed.forEach { append("· ").append(it.name).append("：").append(it.reason).append('\n') }
-            }
-            append("\n安装日志：\n")
-            append(InstallLog.tail(this@AppPickerActivity, 40))
-        }
-        val cm = getSystemService(ClipboardManager::class.java)
-        cm?.setPrimaryClip(ClipData.newPlainText("幻之分身诊断", text))
-        toast("已复制到剪贴板")
-    }
-
-    /** 常见原因给一句「接下来怎么办」 */
-    private fun hintFor(reason: String?): String? = when {
-        reason == null -> null
-        reason.contains("权限与原应用重名") ->
-            "分身与原应用声明了同名权限，系统不允许重复声明。1.4 起会自动改名，更新后重新创建即可。"
-        reason.contains("存储空间不足") ->
-            "先用设置里的「清除缓存」，或卸载不用的分身，再减少每批份数。"
-        reason.contains("签名与已装版本冲突") ->
-            "这个包名装过另一份签名不同的版本，先卸载它再装。"
-        reason.contains("没收到安装结果") ->
-            "系统确认框要手动点「安装」。没等到结果的那几份可能稍后才装上，回到列表看状态即可；" +
-                "显示「未安装」的点一下会重新生成并安装。"
-        reason.contains("无法提交安装") ->
-            "检查是否允许了「安装未知应用」，以及存储是否可写。"
-        reason.contains("冲突") ->
-            "同一包名的旧分身还装在系统里（记录可能已删）。先卸载它，或让工具重新分配序号后再试。"
-        reason.contains("分片") -> "分片安装的应用暂不支持，需要换成完整 APK 再试。"
-        else -> null
+        BuildActivity.start(
+            this,
+            BuildActivity.Request(
+                plans = plans,
+                sourcePkg = entries.first().first.pkg,
+                sourceLabel = entries.first().first.label,
+                copyCount = plans.sumOf { it.copies },
+                estimatedBytes = need,
+                freeBytes = free,
+                nameMode = "逐份独立命名",
+            ),
+        )
+        // 选应用页的使命到此为止：构建进度页有自己的返回，回到这里只会让用户
+        // 面对一个「已经选完、但没有理由再存在」的列表
+        finish()
     }
 
     /** 「预计占用 X，当前可用 Y」；不够用时标红，别等装到一半才发现没空间 */

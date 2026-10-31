@@ -64,6 +64,29 @@ data class HzPalette(
     val fill: Color,
     /** 分段控件里选中那一片。浅色下是纯白（压在一层灰上），深色下是一档更亮的灰 */
     val controlSelected: Color,
+
+    // ------------------------------------------------------ 构建进度页
+    /**
+     * 琥珀提示卡的底与描边。
+     *
+     * 这一页唯一「有颜色」的容器，因为它承载的不是信息而是**待办**：
+     * 系统安装框已经弹出，用户必须去点一下，否则整条队列停在这里。
+     * 换成灰卡的话，用户会把它当成又一条说明文字往下滑。
+     */
+    val warnFill: Color,
+    val warnStroke: Color,
+    /** 琥珀卡里的强调文字（「轮到你操作」「跳过这一份」） */
+    val warnText: Color,
+    /** 琥珀卡顶部那颗圆点、以及队列里「等你点安装」的数字底色：饱和的橙，不是文字用的棕 */
+    val warnAccent: Color,
+    /** 琥珀卡里的正文与副信息：同色系但更淡，压在琥珀底上不跟标题抢 */
+    val warnBody: Color,
+    /** 队列行左侧数字徽标的底色（未开始 / 已就绪） */
+    val badgeNeutralBg: Color,
+    /** 已完成那一行的勾选圆底 */
+    val badgeDoneBg: Color,
+    /** 正在构建那一行的数字圆底 */
+    val badgeBusyBg: Color,
     val isDark: Boolean,
 )
 
@@ -99,6 +122,14 @@ private val LightPalette = HzPalette(
     railDivider = Color(0xFFD8D8DE),
     fill = Color(0xFFE4E4E9),
     controlSelected = Color(0xFFFFFFFF),
+    warnFill = Color(0xFFFFF6E5),
+    warnStroke = Color(0xFFFFD08A),
+    warnText = Color(0xFFA9701B),
+    warnAccent = Color(0xFFFF9500),
+    warnBody = Color(0xFF7A5A2E),
+    badgeNeutralBg = Color(0xFFEFEFF4),
+    badgeDoneBg = Color(0xFFDEF6E4),
+    badgeBusyBg = Color(0xFFDBECFF),
     isDark = false,
 )
 
@@ -134,6 +165,14 @@ private val DarkPalette = HzPalette(
     railDivider = Color(0xFF38383A),
     fill = Color(0xFF2C2C2E),
     controlSelected = Color(0xFF636366),
+    warnFill = Color(0xFF2D2412),
+    warnStroke = Color(0xFFA0722B),
+    warnText = Color(0xFFFFB340),
+    warnAccent = Color(0xFFFF9F0A),
+    warnBody = Color(0xFFD0B88C),
+    badgeNeutralBg = Color(0xFF262628),
+    badgeDoneBg = Color(0xFF20402A),
+    badgeBusyBg = Color(0xFF18304B),
     isDark = true,
 )
 
@@ -314,6 +353,27 @@ data class HzDimens(
      * 步进器本身就占 96dp，230dp 扣掉之后名字只剩 90dp，「淘宝」后面就得截断。
      */
     val pickerPanelWidth: androidx.compose.ui.unit.Dp = 276.dp,
+
+    // ------------------------------------------------------------ 构建进度
+    /**
+     * 队列行：手机 64dp + 5dp 间距，平板 66dp + 8dp 间距。
+     *
+     * 5dp 这个间距是量出来的（稿面相邻两行卡片的上沿差 69dp），不是随手写的 —
+     * 这一页的行是一串进度，行与行之间「连着」比「分开」更像一条队列；
+     * 换成 8dp 的常规间距，列表会读成七个互不相干的应用。
+     */
+    val buildRowHeight: androidx.compose.ui.unit.Dp = 64.dp,
+    val buildRowGap: androidx.compose.ui.unit.Dp = 5.dp,
+    val buildRowHeightWide: androidx.compose.ui.unit.Dp = 66.dp,
+    val buildRowGapWide: androidx.compose.ui.unit.Dp = 8.dp,
+    /** 行首的任务号 / 勾选圆：手机 26dp、平板 28dp（稿面 100/112px @4x） */
+    val buildBadge: androidx.compose.ui.unit.Dp = 26.dp,
+    val buildBadgeWide: androidx.compose.ui.unit.Dp = 28.dp,
+    /** 底部操作条 62dp 高、22dp 外边距；里面那颗「取消剩余」120×52dp */
+    val buildBarHeight: androidx.compose.ui.unit.Dp = 62.dp,
+    val buildBarInset: androidx.compose.ui.unit.Dp = 22.dp,
+    val buildPillWidth: androidx.compose.ui.unit.Dp = 120.dp,
+    val buildPillHeight: androidx.compose.ui.unit.Dp = 52.dp,
 )
 
 /** 最小可点区域。低于 48dp 的按钮一律用它兜住，不靠调用方自觉 */

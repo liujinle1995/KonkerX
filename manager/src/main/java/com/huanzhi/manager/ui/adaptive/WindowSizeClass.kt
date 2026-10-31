@@ -41,6 +41,9 @@ object WindowSizeClasses {
     private const val MEDIUM_MIN_DP = 600
     private const val EXPANDED_MIN_DP = 840
 
+    /** 双栏布局的最低高度：再矮就放不下左列那三块卡 */
+    private const val TWO_PANE_MIN_HEIGHT_DP = 560
+
     fun of(context: Context): WindowSizeClass {
         val w = context.resources.configuration.screenWidthDp
         return when {
@@ -48,6 +51,20 @@ object WindowSizeClasses {
             w >= MEDIUM_MIN_DP -> WindowSizeClass.MEDIUM
             else -> WindowSizeClass.COMPACT
         }
+    }
+
+    /**
+     * 够不够摆双栏。
+     *
+     * 只看宽度会把**横屏手机**（891×411dp）也当成平板：宽度过了 840dp，高度却只有平板的一半，
+     * 双栏左列（抬头卡 + 提醒卡 + 详情卡）叠起来七百多 dp，一屏根本放不下，
+     * 结果提醒卡被压在底部玻璃条下面、用户看不到"该点安装了"。
+     *
+     * 双栏成立的前提是两边都能读，所以宽和高要同时满足。560dp 是左列三块卡最紧凑时的下限。
+     */
+    fun canShowTwoPane(context: Context): Boolean {
+        val c = context.resources.configuration
+        return c.screenWidthDp >= EXPANDED_MIN_DP && c.screenHeightDp >= TWO_PANE_MIN_HEIGHT_DP
     }
 }
 
