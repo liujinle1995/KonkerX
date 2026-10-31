@@ -87,6 +87,55 @@ data class HzPalette(
     val badgeDoneBg: Color,
     /** 正在构建那一行的数字圆底 */
     val badgeBusyBg: Color,
+
+    // ------------------------------------------------------ 安装日志弹层
+    /**
+     * 弹层自身的底。
+     *
+     * 浅色下就是页面底色 #F2F2F7（弹层是一整块「凹下去的板」，卡片浮在它上面）；
+     * 深色下反而比卡片**亮**一档（#2C2C2E vs #1C1C1E）—— 同一层「底板」在亮底上
+     * 靠更暗来表达，在暗底上靠更亮来表达。两档直接用同一个值就会塌成一片。
+     */
+    val logSheet: Color,
+    /** 失败卡里的错误块底 / 边框 / 错误码文字 / 中文说明 */
+    val logFailFill: Color,
+    val logFailStroke: Color,
+    val logFailText: Color,
+    /** 说明文字是同色系但更淡的一档，压在浅粉底上读音不抢错误码 */
+    val logFailBody: Color,
+    /** 「安装失败」徽标底 */
+    val logFailBadge: Color,
+    /** 「已取消」卡的琥珀描边与徽标 */
+    val logWarnStroke: Color,
+    val logWarnBadge: Color,
+    val logWarnText: Color,
+
+    // ------------------------------------------------------ 创建分身弹窗
+    /**
+     * 弹窗自身的底。
+     *
+     * 浅色是纯白 —— 它是浮在最上面的一层，比页面 #F2F2F7 亮一档才像"抬起来"；
+     * 深色是 #2C2C2E，比页面 #000000 亮、又比常规卡片 #1C1C1E 亮一档：
+     * 这一屏里它要同时跟「页面」和「它上面那块输入框」分出层次，只能取中间那一档。
+     */
+    val dialogSurface: Color,
+    /**
+     * 名称输入框的底。
+     *
+     * 比弹窗底更深（浅色）／更亮（深色），因为它表达的是"凹下去"，方向必须和卡片相反。
+     */
+    val dialogField: Color,
+    /** 加固壳提示块的底 */
+    val dialogWarnFill: Color,
+    /** 加固壳提示块里的文字 */
+    val dialogWarnText: Color,
+    /**
+     * 份数滑轨上的刻度点。
+     *
+     * 压在未填充（灰）的那一段上，所以比未填充色再深一档；
+     * 用和弹窗底一样的白就会被当成"没画完的那一段"。
+     */
+    val dialogTick: Color,
     val isDark: Boolean,
 )
 
@@ -130,6 +179,20 @@ private val LightPalette = HzPalette(
     badgeNeutralBg = Color(0xFFEFEFF4),
     badgeDoneBg = Color(0xFFDEF6E4),
     badgeBusyBg = Color(0xFFDBECFF),
+    logSheet = Color(0xFFF2F2F7),
+    logFailFill = Color(0xFFFFF1F0),
+    logFailStroke = Color(0xFFFFC9C4),
+    logFailText = Color(0xFFC0271E),
+    logFailBody = Color(0xFF8A5B57),
+    logFailBadge = Color(0xFFFFE7E6),
+    logWarnStroke = Color(0xFFFFE0B8),
+    logWarnBadge = Color(0xFFFFF0DB),
+    logWarnText = Color(0xFFB26A00),
+    dialogSurface = Color(0xFFFFFFFF),
+    dialogField = Color(0xFFE5E5EA),
+    dialogWarnFill = Color(0xFFFFF0DB),
+    dialogWarnText = Color(0xFFB26A00),
+    dialogTick = Color(0xFFC8C8CB),
     isDark = false,
 )
 
@@ -173,6 +236,20 @@ private val DarkPalette = HzPalette(
     badgeNeutralBg = Color(0xFF262628),
     badgeDoneBg = Color(0xFF20402A),
     badgeBusyBg = Color(0xFF18304B),
+    logSheet = Color(0xFF2C2C2E),
+    logFailFill = Color(0xFF3E2223),
+    logFailStroke = Color(0xFF823E3C),
+    logFailText = Color(0xFFFF6961),
+    logFailBody = Color(0xFFE0A8A4),
+    logFailBadge = Color(0xFF452323),
+    logWarnStroke = Color(0xFF825714),
+    logWarnBadge = Color(0xFF49361A),
+    logWarnText = Color(0xFFFF9F0A),
+    dialogSurface = Color(0xFF2C2C2E),
+    dialogField = Color(0xFF38383A),
+    dialogWarnFill = Color(0xFF564327),
+    dialogWarnText = Color(0xFFFF9F0A),
+    dialogTick = Color(0xFF636366),
     isDark = true,
 )
 

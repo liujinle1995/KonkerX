@@ -21,14 +21,15 @@ import com.huanzhi.manager.core.CacheCleaner
 import com.huanzhi.manager.core.Changelog
 import com.huanzhi.manager.core.CloneStore
 import com.huanzhi.manager.core.InstallLog
+import com.huanzhi.manager.core.LogBook
 import com.huanzhi.manager.core.Purge
 import com.huanzhi.manager.core.RuntimeProbe
 import com.huanzhi.manager.core.SettingsStore
-import com.huanzhi.manager.databinding.DialogLogBinding
 import com.huanzhi.manager.databinding.DialogPayBinding
 import com.huanzhi.manager.ui.ProgressDialog
 import com.huanzhi.manager.ui.components.MainTab
 import com.huanzhi.manager.ui.dialog.glassAlert
+import com.huanzhi.manager.ui.dialog.showInstallLog
 import com.huanzhi.manager.ui.dialog.glassChoice
 import com.huanzhi.manager.ui.dialog.glassMenu
 import com.huanzhi.manager.ui.motion.Curve
@@ -152,7 +153,10 @@ class SettingsActivity : AppCompatActivity() {
                     totalOccupied = occupied,
                     cacheBytes = stat.bytes,
                     cacheFiles = stat.files,
-                    logCount = InstallLog.count(this@SettingsActivity),
+                    // 计数必须跟着**弹层里那一份内容**走：外面写 7 条、点开只看到 4 张卡，
+                    // 用户对这页的第一印象就是「它在瞎报」。所以只看结构化记录簿，
+                    // 原始 InstallLog 的行数（submit FAIL / reconcile 之类）不该出现在肉眼可见的位置
+                    logCount = LogBook.read(this@SettingsActivity).size,
                     pendingRecords = store.deadCount(),
                     versionName = BuildConfig.VERSION_NAME,
                     versionDate = Changelog.current.date,
@@ -281,27 +285,16 @@ class SettingsActivity : AppCompatActivity() {
     /**
      * 「建了两个只装上一个」这种问题，光看界面是判断不了的：
      * 真正的原因藏在建包、提交、系统回执这三段里，所以要能直接看到。
+     *
+     * 3.11 起不再是「一堆等宽文本 + 三个按钮」，而是按份排的卡片（design/15、18、24、30）。
+     * 原始文本没有丢，仍然由弹层右上角的「复制」整段带走 —— 那是拿去发给人看的东西，
+     * 而卡片是留下来自己看的东西。
      */
     private fun showLog() {
         lifecycleScope.launch {
-            val text = withContext(Dispatchers.IO) { InstallLog.tail(this@SettingsActivity, 200) }
-            val view = DialogLogBinding.inflate(layoutInflater)
-            view.logText.text = text.ifBlank { getString(R.string.install_log_empty) }
-            MaterialAlertDialogBuilder(this@SettingsActivity)
-                .setTitle(R.string.install_log)
-                .setView(view.root)
-                .setPositiveButton(R.string.copy) { _, _ ->
-                    val cm = getSystemService(ClipboardManager::class.java)
-                    cm?.setPrimaryClip(ClipData.newPlainText("幻之分身安装日志", text))
-                    toast("已复制到剪贴板")
-                }
-                .setNeutralButton("清空") { _, _ ->
-                    InstallLog.file(this@SettingsActivity).delete()
-                    toast("日志已清空")
-                    refresh()
-                }
-                .setNegativeButton(R.string.done, null)
-                .show()
+            val events = withContext(Dispatchers.IO) { LogBook.read(this@SettingsActivity) }
+            if (isFinishing || isDestroyed) return@launch
+            showInstallLog(events)
         }
     }
 

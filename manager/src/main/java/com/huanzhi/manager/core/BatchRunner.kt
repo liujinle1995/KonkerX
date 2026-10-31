@@ -373,13 +373,17 @@ object BatchRunner {
                 val waiter = InstallWait(rec.clonePkg)
                 InstallBus.addListener(waiter.listener)
                 currentWait = waiter
+                var installStarted = 0L
                 val outcome: InstallOutcome
                 try {
                     // 写会话只占最后一点：它到 100% 的时候，用户还一份都没点「安装」，
                     // 满格会让他以为已经完事了 —— 最后那 2% 留给真正的装好
                     emitFraction((idx + 0.94f) / total, "写入安装会话：${b.name}（${idx + 1}/$total）")
+                    installStarted = System.currentTimeMillis()
+                    // keepApk：失败的那一份把包留在暂存目录里。装成功再删（见下面 landed 分支），
+                    // 用户点「重试这一份」时就不用再花几十秒重打一遍几百 MB
                     val submitted = withContext(Dispatchers.IO) {
-                        wf.install(rec) { f ->
+                        wf.install(rec, keepApk = true) { f ->
                             emitFraction(
                                 (idx + 0.94f + f * 0.02f) / total,
                                 "写入安装会话：${b.name}（${idx + 1}/$total）· ${(f * 100).toInt()}%",
@@ -417,6 +421,7 @@ object BatchRunner {
                 when {
                     landed -> {
                         okCount++
+                        CloneCache.drop(File(rec.apkPath))
                         store.markInstalled(rec.clonePkg)
                         queue[idx] = queue[idx].copy(state = ItemState.Installed, percent = 100)
                         if (outcome.code != 1) {
@@ -434,12 +439,16 @@ object BatchRunner {
                     outcome.code == -1 -> {
                         failed += Fail(name, "已取消", rec.clonePkg)
                         cancelled = true
+                        // 用户自己点的取消，不会再想要这一份，包直接删掉
+                        CloneCache.drop(File(rec.apkPath))
                         queue[idx] = queue[idx].copy(state = ItemState.Cancelled)
                     }
                     outcome.definitive -> {
                         failed += Fail(name, outcome.reason, rec.clonePkg)
-                        // 装不上就把这条记录一起撤掉，免得列表里堆一串「未安装」
-                        wf.forget(rec)
+                        // 装不上就把这条记录一起撤掉，免得列表里堆一串「未安装」。
+                        // 但**包要留着**：日志里那一份可以点「重试这一份」直接重提交，
+                        // 不必等几十秒重新打包（wf.forget 会连包一起删，所以这里只删记录）
+                        store.remove(rec.clonePkg)
                         queue[idx] = queue[idx].copy(
                             state = ItemState.Failed,
                             reason = outcome.reason,
@@ -454,6 +463,37 @@ object BatchRunner {
                         )
                     }
                 }
+                // 记一笔给人看的账。原始 InstallLog 里这些信息散在 build/batch/recv 好几行，
+                // 拼不出一张卡：应用名、分身名、错误码、两段耗时、留没留包，这里一次理顺
+                val kind = when {
+                    landed -> LogEvent.Kind.Installed
+                    outcome.code == -2 -> LogEvent.Kind.Skipped
+                    outcome.code == -1 -> LogEvent.Kind.Cancelled
+                    else -> LogEvent.Kind.Failed
+                }
+                val kept = File(rec.apkPath).exists()
+                LogBook.append(
+                    app,
+                    LogEvent(
+                        at = System.currentTimeMillis(),
+                        kind = kind,
+                        appLabel = rec.targetLabel,
+                        cloneName = name,
+                        clonePkg = rec.clonePkg,
+                        sourcePkg = rec.targetPkg,
+                        code = LogBook.codeOf(outcome.reason),
+                        reason = if (landed) "" else outcome.reason,
+                        bytes = apkBytes,
+                        buildMs = queue[idx].elapsedMs,
+                        installMs = if (installStarted > 0) {
+                            System.currentTimeMillis() - installStarted
+                        } else {
+                            0L
+                        },
+                        cachePath = if (kept) rec.apkPath else "",
+                        snapshot = RecordSnapshot.of(rec),
+                    )
+                )
                 InstallLog.append(
                     app,
                     "batch pkg=${rec.clonePkg} size=$apkBytes -> ${outcome.reason}"
@@ -499,6 +539,29 @@ object BatchRunner {
                     failed.clear()
                     failed.addAll(stillBad)
                     InstallLog.append(app, "reconcile rescued=${installed.size} still=${stillBad.size}")
+                    // 这几份刚才记成「安装失败」，其实装上了。日志照实改口，
+                    // 否则用户会看到一张红卡说失败、列表里那个分身却能正常打开
+                    installed.forEach { f ->
+                        val pkg = f.pkg ?: return@forEach
+                        LogBook.append(
+                            app,
+                            LogEvent(
+                                at = System.currentTimeMillis(),
+                                kind = LogEvent.Kind.Installed,
+                                appLabel = "",
+                                cloneName = f.name,
+                                clonePkg = pkg,
+                                sourcePkg = "",
+                                code = "",
+                                reason = "",
+                                bytes = 0,
+                                buildMs = 0,
+                                installMs = 0,
+                                cachePath = "",
+                                snapshot = store.find(pkg)?.let { RecordSnapshot.of(it) },
+                            )
+                        )
+                    }
                 }
             }
 

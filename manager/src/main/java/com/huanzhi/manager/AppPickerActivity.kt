@@ -2,16 +2,11 @@ package com.huanzhi.manager
 
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.DialogInterface
 import android.os.Build
 import android.os.Bundle
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import android.view.View
-import android.widget.Button
-import android.widget.ScrollView
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -19,10 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
-import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.color.MaterialColors
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.huanzhi.manager.core.ApkInstaller
 import com.huanzhi.manager.core.AppEntry
 import com.huanzhi.manager.core.AppScanner
@@ -36,16 +28,15 @@ import com.huanzhi.manager.core.InstallLog
 import com.huanzhi.manager.core.Pinyin
 import com.huanzhi.manager.core.StorageCheck
 import com.huanzhi.manager.core.TemplateSpec
-import com.huanzhi.manager.databinding.DialogBatchBinding
-import com.huanzhi.manager.databinding.DialogCloneNameBinding
-import com.huanzhi.manager.databinding.ItemNameEditBinding
 import com.huanzhi.manager.ui.adaptive.WindowSizeClass
 import com.huanzhi.manager.ui.adaptive.WindowSizeClasses
+import com.huanzhi.manager.ui.dialog.CreateCloneRequest
+import com.huanzhi.manager.ui.dialog.glassAlert
+import com.huanzhi.manager.ui.dialog.showCreateCloneDialog
 import com.huanzhi.manager.ui.screen.AppPickerScreen
 import com.huanzhi.manager.ui.screen.AppPickerUiState
 import com.huanzhi.manager.ui.screen.PickerAppUi
 import com.huanzhi.manager.ui.screen.PickerFilter
-import com.huanzhi.manager.ui.dialog.glassAlert
 import com.huanzhi.manager.ui.screen.PickerSectionUi
 import com.huanzhi.manager.ui.theme.HuanZhiTheme
 import com.huanzhi.manager.util.Formats
@@ -370,7 +361,7 @@ class AppPickerActivity : AppCompatActivity() {
     // ---------------- 单个应用：1 份或多份 ----------------
 
     /**
-     * 同一个弹窗既处理「建一个」也处理「建一批」。
+     * 建一个分身（也可以在这同一个弹窗里一次建多份）。
      *
      * 名称框的语义跟着份数走：
      *   · 1 份 → 填什么就叫什么；
@@ -380,143 +371,45 @@ class AppPickerActivity : AppCompatActivity() {
     private fun askClone(app: AppEntry) {
         if (!ensureInstallPermission()) return
 
-        val used = CloneStore(this).all().size
-        val maxTotal = (999 - used).coerceAtLeast(0)
+        val store = CloneStore(this)
+        val maxTotal = (999 - store.all().size).coerceAtLeast(0)
         if (maxTotal == 0) {
             showError("分身数量已满", "最多只能有 999 个分身，请先卸载一些再试。")
             return
         }
         val maxCopies = minOf(MAX_SINGLE_COPIES, maxTotal)
 
-        val view = DialogCloneNameBinding.inflate(layoutInflater)
-        view.appTitle.text = app.label
-
         // 加固壳：不阻止创建，只把「装了可能卡启动页」提前说清楚
         val hardening = HardeningDetector.peek(app.pkg) ?: app.hardening
-        if (hardening != null) {
-            view.warnHint.text = getString(R.string.hardening_hint_one, hardening)
-            view.warnHint.visibility = View.VISIBLE
-        } else {
-            view.warnHint.visibility = View.GONE
-        }
 
-        // 默认名按该应用已有的分身数量编号，不再用全局序号（否则会冒出「分身7」这种怪名字）
-        val defaultName = CloneStore(this).defaultName(app.label, app.pkg)
-        val baseName = app.label.take(12)
-        var touched = false
-        var programmatic = false
-        var customNames: List<String>? = null
-
-        fun setInput(text: String) {
-            programmatic = true
-            view.nameInput.setText(text)
-            // 光标位置要按过滤后的实际长度算：maxLength 可能把默认名截短，
-            // 直接 setSelection(text.length) 会抛 IndexOutOfBounds
-            view.nameInput.setSelection(view.nameInput.text?.length ?: 0)
-            programmatic = false
-        }
-
-        fun currentBase(): String {
-            val typed = view.nameInput.text?.toString()?.trim().orEmpty()
-            return typed.ifEmpty { baseName }
-        }
-
-        fun autoNames(base: String, n: Int): List<String> =
-            if (n <= 1) listOf(base) else (1..n).map { "$base · 分身$it" }
-
-        fun currentNames(n: Int): List<String> =
-            customNames?.takeIf { it.size == n } ?: autoNames(currentBase(), n)
-
-        fun renderPreview(n: Int) {
-            val names = currentNames(n)
-            view.namePreview.text = if (names.size == 1) {
-                getString(R.string.name_preview_one, names[0])
-            } else {
-                getString(R.string.name_preview_many, names[0], names[1], names.size)
-            }
-        }
-
-        var copies = 1
-        view.nameInput.doAfterTextChanged {
-            if (!programmatic) {
-                touched = true
-                // 改了基础名，之前逐份定好的名字就作废，避免预览和输入框对不上
-                customNames = null
-            }
-            renderPreview(copies)
-        }
-        setInput(defaultName)
-
-        view.slider.valueFrom = 1f
-        view.slider.valueTo = maxCopies.toFloat()
-        view.slider.value = 1f
-
-        val sourceSize = StorageCheck.sourceApkSize(this, app.pkg)
-        // 按钮文字要跟着份数变，先留个引用，show 之后才拿得到
-        var posButton: Button? = null
-        fun render(n: Int) {
-            copies = n
-            if (customNames != null && customNames!!.size != n) customNames = null
-            if (n == 1) {
-                view.nameLayout.hint = getString(R.string.clone_name)
-                if (!touched) setInput(defaultName)
-                view.countLabel.setText(R.string.clone_count_one)
-                view.countHint.setText(R.string.clone_count_hint_one)
-            } else {
-                view.nameLayout.hint = getString(R.string.clone_name_prefix)
-                if (!touched) setInput(baseName)
-                view.countLabel.text = getString(R.string.clone_count_many, n)
-                view.countHint.setText(R.string.clone_count_hint_many)
-            }
-            view.perCopyBtn.visibility = if (n > 1) View.VISIBLE else View.GONE
-            renderPreview(n)
-            applySpaceHint(
-                view.spaceHint,
-                StorageCheck.estimateNeeded(sourceSize, n),
-                StorageCheck.freeBytes(this)
+        showCreateCloneDialog(
+            CreateCloneRequest(
+                title = getString(R.string.new_clone_title),
+                subtitle = app.label,
+                rows = listOf(
+                    CreateCloneRequest.Row(
+                        pkg = app.pkg,
+                        label = app.label,
+                        fallback = app.label.take(12),
+                        sourceBytes = StorageCheck.sourceApkSize(this, app.pkg),
+                        count = 1,
+                    )
+                ),
+                copies = 1,
+                maxCopies = maxCopies,
+                slider = true,
+                warn = hardening?.let { getString(R.string.hardening_hint_one, it) },
+                note = getString(R.string.clone_count_hint_one),
+                // 默认名按该应用已有的分身数量编号，不再用全局序号（否则会冒出「分身7」这种怪名字）
+                defaultName = { _, n ->
+                    if (n == 1) store.defaultName(app.label, app.pkg) else app.label.take(12)
+                },
             )
-            posButton?.text = if (n == 1) "创建" else "创建 $n 个"
-        }
-
-        val dlg = MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.new_clone_title)
-            .setView(view.root)
-            .setPositiveButton("创建", null)
-            .setNegativeButton(R.string.cancel, null)
-            .create()
-        dlg.show()
-
-        posButton = dlg.getButton(DialogInterface.BUTTON_POSITIVE)
-        view.slider.addOnChangeListener { _, value, _ -> render(value.toInt()) }
-        render(1)
-
-        view.perCopyBtn.setOnClickListener {
-            val n = copies
-            if (n < 2) return@setOnClickListener
-            NamingDialog.show(
-                this,
-                getString(R.string.per_copy_title, app.label),
-                currentNames(n)
-            ) { names ->
-                customNames = names
-                touched = true
-                renderPreview(copies)
-            }
-        }
-
-        posButton?.setOnClickListener {
-            val n = copies
-            val typed = view.nameInput.text?.toString()?.trim().orEmpty()
-            if (typed.isEmpty()) {
-                toast("名称不能为空")
-                return@setOnClickListener
-            }
-            if (n == 1) {
-                dlg.dismiss()
-                create(app, typed)
+        ) { result ->
+            val names = result.plans.single().names
+            if (names.size == 1) {
+                create(app, names[0])
             } else {
-                val names = if (customNames?.size == n) customNames!! else autoNames(typed, n)
-                dlg.dismiss()
                 startBatch(listOf(app to names))
             }
         }
@@ -560,12 +453,13 @@ class AppPickerActivity : AppCompatActivity() {
     /**
      * 批量创建。
      *
-     * [presetCounts] 不为空表示份数已经在上一个界面定好了（平板右栏的步进器），
-     * 这里只负责命名：隐藏统一份数的滑块，每行按自己的份数展开名字。
-     * 为空时（手机）保持老做法 —— 一个滑块统一定份数。
+     * [presetCounts] 不为空表示份数已经在上一个界面定好了（平板右栏的步进器）。
      *
-     * 为什么不统一：平板右栏存在的意义就是「淘宝 2 份、微信 1 份」这种混搭，
-     * 弹窗再拿一个滑块把它们抹平，前面那一步就白做了。
+     * 滑块的处理分三种，判据是「每一行现在是多少份」：
+     *   · 手机（[presetCounts] 为 null）→ 一个滑块统一定份数；
+     *   · 平板且各行份数一致 → 保留滑块（稿面 37/41 就是这一版），拖动即所有行一起变；
+     *   · 平板且各行份数不同（淘宝 2 份、微信 1 份）→ 隐藏滑块，份数行只报总数。
+     *     「右栏存在的意义就是这种混搭，弹窗再拿一个滑块把它们抹平，前面那一步就白做了」。
      */
     private fun showBatchDialog(presetCounts: Map<String, Int>?) {
         if (selected.isEmpty()) {
@@ -580,8 +474,7 @@ class AppPickerActivity : AppCompatActivity() {
         if (choices.isEmpty()) return
 
         val store = CloneStore(this)
-        val used = store.all().size
-        val maxTotal = (999 - used).coerceAtLeast(0)
+        val maxTotal = (999 - store.all().size).coerceAtLeast(0)
         if (maxTotal == 0) {
             showError("分身数量已满", "最多只能有 999 个分身，请先卸载一些再试。")
             return
@@ -589,180 +482,107 @@ class AppPickerActivity : AppCompatActivity() {
         val maxCopies = (maxTotal / choices.size.coerceAtLeast(1))
             .coerceIn(1, MAX_BATCH_COPIES)
 
-        val view = DialogBatchBinding.inflate(layoutInflater)
-        view.summary.text = getString(R.string.selected_apps, choices.size)
-        view.subtitle.text = choices.joinToString("、") { it.label }
+        // 只勾了一个应用时不该叫「批量」：稿面（34/36/38/40）那一版副标题就是应用名，
+        // 也没有「已选 N 个应用」和应用名行。平板上「下一步」是唯一入口，所以在这里分流。
+        if (choices.size == 1) {
+            showSingleFromSelection(choices.single(), presetCounts, maxCopies, store)
+            return
+        }
 
         val hardened = choices.filter {
             (HardeningDetector.peek(it.pkg) ?: it.hardening) != null
         }
-        if (hardened.isNotEmpty()) {
+        val warn = if (hardened.isEmpty()) {
+            null
+        } else {
             val names = hardened.take(3).joinToString("、") { it.label } +
                 if (hardened.size > 3) " 等 ${hardened.size} 个应用" else ""
-            view.warnHint.text = getString(R.string.hardening_hint_batch, names)
-            view.warnHint.visibility = View.VISIBLE
-        } else {
-            view.warnHint.visibility = View.GONE
+            getString(R.string.hardening_hint_batch, names)
         }
 
-        val sourceSizes = choices.associate { it.pkg to StorageCheck.sourceApkSize(this, it.pkg) }
-        val uniform = presetCounts == null
-        var uniformCopies = minOf(2, maxCopies)
-        var programmatic = false
-
-        class Row(val app: AppEntry, val v: ItemNameEditBinding) {
-            /** 这一行的份数。统一模式下由滑块改，预置模式下由上一屏定死 */
-            var count: Int = 1
-            /** 逐份定好的名字；null 表示按基础名自动编号 */
-            var custom: List<String>? = null
-            /** 用户是否手动改过基础名（改过就不再被份数变化覆盖） */
-            var touched = false
+        val counts = choices.map {
+            (presetCounts?.get(it.pkg) ?: DEFAULT_BATCH_COPIES).coerceIn(1, maxCopies)
         }
+        val slider = counts.toSet().size == 1
 
-        fun autoNames(base: String, n: Int): List<String> =
-            if (n <= 1) listOf(base) else (1..n).map { "$base · 分身$it" }
-
-        fun baseOf(row: Row): String =
-            row.v.rowNameInput.text?.toString()?.trim().orEmpty()
-                .ifEmpty { row.app.label.take(12) }
-
-        fun namesOf(row: Row, n: Int): List<String> =
-            row.custom?.takeIf { it.size == n } ?: autoNames(baseOf(row), n)
-
-        fun setInput(row: Row, text: String) {
-            programmatic = true
-            row.v.rowNameInput.setText(text)
-            row.v.rowNameInput.setSelection(row.v.rowNameInput.text?.length ?: 0)
-            programmatic = false
-        }
-
-        fun renderRow(row: Row) {
-            val names = namesOf(row, row.count)
-            row.v.rowPreview.text = "→ " + names.take(3).joinToString("、") +
-                if (names.size > 3) " … 共 ${names.size} 个" else ""
-            row.v.rowPerCopy.visibility = if (row.count > 1) View.VISIBLE else View.GONE
-        }
-
-        fun defaultFor(app: AppEntry, n: Int): String =
-            if (n == 1) store.defaultName(app.label, app.pkg) else app.label.take(12)
-
-        val rows = choices.map { app ->
-            val v = ItemNameEditBinding.inflate(layoutInflater, view.namesHost, false)
-            v.rowTitle.text = app.label
-            view.namesHost.addView(v.root)
-            val row = Row(app, v)
-            row.count = (presetCounts?.get(app.pkg) ?: uniformCopies).coerceIn(1, maxCopies)
-            setInput(row, defaultFor(app, row.count))
-
-            v.rowNameInput.doAfterTextChanged {
-                if (!programmatic) {
-                    row.touched = true
-                    row.custom = null
-                }
-                renderRow(row)
-            }
-            v.rowPerCopy.setOnClickListener {
-                if (row.count < 2) return@setOnClickListener
-                NamingDialog.show(
-                    this,
-                    getString(R.string.per_copy_title, app.label),
-                    namesOf(row, row.count)
-                ) { names ->
-                    row.custom = names
-                    row.touched = true
-                    renderRow(row)
-                }
-            }
-            row
-        }
-
-        var posButton: Button? = null
-
-        fun renderAll() {
-            val total = rows.sumOf { it.count }
-            view.countLabel.text = if (uniform) {
-                "每个应用生成 $uniformCopies 份 · 共 $total 个分身"
-            } else {
-                "共 $total 个分身"
-            }
-            view.countLabel.setTextColor(
-                if (total > maxTotal) 0xFFB3261E.toInt() else
-                    MaterialColors.getColor(
-                        view.countLabel, com.google.android.material.R.attr.colorOnSurface
+        showCreateCloneDialog(
+            CreateCloneRequest(
+                title = getString(R.string.batch_title),
+                subtitle = getString(R.string.selected_apps, choices.size),
+                apps = choices.joinToString("、") { it.label },
+                rows = choices.mapIndexed { i, app ->
+                    CreateCloneRequest.Row(
+                        pkg = app.pkg,
+                        label = app.label,
+                        fallback = app.label.take(12),
+                        sourceBytes = StorageCheck.sourceApkSize(this, app.pkg),
+                        count = counts[i],
                     )
+                },
+                copies = counts.first(),
+                maxCopies = maxCopies,
+                slider = slider,
+                warn = warn,
+                hint = getString(R.string.batch_names_hint),
+                note = getString(R.string.batch_note),
+                // 稿面批量这四张（35/37/39/41）的说明就到「…点取消可以中止后续。」为止
+                spaceHint = false,
+                defaultName = { i, n ->
+                    val app = choices[i]
+                    if (n == 1) store.defaultName(app.label, app.pkg) else app.label.take(12)
+                },
             )
-            val need = rows.sumOf { StorageCheck.estimateNeeded(sourceSizes[it.app.pkg] ?: 0L, it.count) }
-            applySpaceHint(view.spaceHint, need, StorageCheck.freeBytes(this))
-
-            // 份数变了：没手改过的行跟着恢复默认，逐份定过的作废（数量对不上了）
-            rows.forEach { row ->
-                if (row.custom != null && row.custom!!.size != row.count) row.custom = null
-                if (!row.touched) setInput(row, defaultFor(row.app, row.count))
-                renderRow(row)
-            }
-            posButton?.text = if (total == 1) "创建" else "创建 $total 个"
-        }
-
-        view.slider.valueFrom = 1f
-        view.slider.valueTo = maxCopies.toFloat()
-        view.slider.value = uniformCopies.toFloat()
-        if (uniform) {
-            view.slider.addOnChangeListener { _, value, _ ->
-                uniformCopies = value.toInt()
-                rows.forEach { if (it.count != uniformCopies) it.count = uniformCopies }
-                renderAll()
-            }
-        } else {
-            // 份数已经在上一屏定过了（每行可能不同），这里再放一个「统一份数」滑块
-            // 会让人以为一拖就能改全部，实际会把之前的设置抹掉
-            view.slider.visibility = View.GONE
-            // 这两段说明（独立 APK、每份都要确认；每行可单独改名）在选择页右栏
-            // 和每行下面的预览里已经表达过了。平板只有 768dp 高，留着它们会把
-            // 「预计占用」那一行顶出弹窗
-            view.note.visibility = View.GONE
-            view.namesHint.visibility = View.GONE
-            (view.countLabel.layoutParams as android.view.ViewGroup.MarginLayoutParams).topMargin = dp(12)
-        }
-
-        // 名称行是按选中应用逐行加的，选五个应用时内容会高过弹窗上限。
-        // **不要**自己再包一层 ScrollView：MaterialAlertDialog 在内容超高时会自己套一层，
-        // 外面再套一层的话手势会被里层吃掉（里层没有可滚范围），看上去就是"内容被截断、
-        // 而且划不动"。交给它自己处理，再顺手把这一屏用不到的说明收起来。
-        // 横屏手机只有 411dp 高：标题 + 内容 + 按钮塞不进一屏时，Material 那一层
-        // 是直接裁掉超出部分（「共 N 个分身」被压成一条线）。矮窗口里自己套一层滚动，
-        // 高窗口保持原样 —— 那里 Material 会自己处理，双层滚动会互相抢手势
-        val body: View = if (resources.configuration.screenHeightDp < 480) {
-            ScrollView(this).apply { addView(view.root) }
-        } else {
-            view.root
-        }
-        val dlg = MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.batch_title)
-            .setView(body)
-            .setPositiveButton(R.string.batch_create, null)
-            .setNegativeButton(R.string.cancel, null)
-            .create()
-        dlg.show()
-        posButton = dlg.getButton(DialogInterface.BUTTON_POSITIVE)
-        renderAll()
-
-        dlg.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener {
-            val total = rows.sumOf { it.count }
+        ) { result ->
+            val total = result.plans.sumOf { it.names.size }
             if (total > maxTotal) {
                 toast("超出上限，最多还能创建 $maxTotal 个")
-                return@setOnClickListener
+                return@showCreateCloneDialog
             }
-            val entries = ArrayList<Pair<AppEntry, List<String>>>(rows.size)
-            for (row in rows) {
-                val names = namesOf(row, row.count)
-                if (names.any { it.isBlank() }) {
-                    toast(getString(R.string.name_empty))
-                    return@setOnClickListener
-                }
-                entries += row.app to names
+            val entries = result.plans.map { plan ->
+                choices.first { it.pkg == plan.pkg } to plan.names
             }
-            dlg.dismiss()
             startBatch(entries)
+        }
+    }
+
+    /**
+     * 勾选里只有一个应用时走的弹窗：和点行进来的那份（askClone）长得一样，
+     * 只是份数沿用右栏已经调好的值，不从 1 开始。
+     */
+    private fun showSingleFromSelection(
+        app: AppEntry,
+        presetCounts: Map<String, Int>?,
+        maxCopies: Int,
+        store: CloneStore,
+    ) {
+        val copies = (presetCounts?.get(app.pkg) ?: 1).coerceIn(1, maxCopies)
+        val hardening = HardeningDetector.peek(app.pkg) ?: app.hardening
+
+        showCreateCloneDialog(
+            CreateCloneRequest(
+                title = getString(R.string.new_clone_title),
+                subtitle = app.label,
+                rows = listOf(
+                    CreateCloneRequest.Row(
+                        pkg = app.pkg,
+                        label = app.label,
+                        fallback = app.label.take(12),
+                        sourceBytes = StorageCheck.sourceApkSize(this, app.pkg),
+                        count = copies,
+                    )
+                ),
+                copies = copies,
+                maxCopies = maxCopies,
+                slider = true,
+                warn = hardening?.let { getString(R.string.hardening_hint_one, it) },
+                note = getString(R.string.clone_count_hint_one),
+                defaultName = { _, n ->
+                    if (n == 1) store.defaultName(app.label, app.pkg) else app.label.take(12)
+                },
+            )
+        ) { result ->
+            val names = result.plans.single().names
+            if (names.size == 1) create(app, names[0]) else startBatch(listOf(app to names))
         }
     }
 
@@ -819,25 +639,6 @@ class AppPickerActivity : AppCompatActivity() {
         finish()
     }
 
-    /** 「预计占用 X，当前可用 Y」；不够用时标红，别等装到一半才发现没空间 */
-    private fun applySpaceHint(tv: TextView, need: Long, free: Long) {
-        if (need <= 0L) {
-            tv.text = ""
-            return
-        }
-        if (need > free) {
-            tv.text = "预计需要 ${Formats.size(need)}，当前可用 ${Formats.size(free)}：空间可能不够"
-            tv.setTextColor(0xFFB3261E.toInt())
-        } else {
-            tv.text = "预计占用 ${Formats.size(need)}，当前可用 ${Formats.size(free)}"
-            tv.setTextColor(
-                MaterialColors.getColor(
-                    tv, com.google.android.material.R.attr.colorOnSurfaceVariant
-                )
-            )
-        }
-    }
-
     private fun showError(title: String, message: String) {
         glassAlert(
             title = title,
@@ -848,14 +649,21 @@ class AppPickerActivity : AppCompatActivity() {
 
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
 
-    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
-
     companion object {
-        /** 单个应用一次最多生成几份：再多安装确认框会点到手酸，也吃存储 */
-        private const val MAX_SINGLE_COPIES = 10
+        /**
+         * 单个应用一次最多生成几份：再多安装确认框会点到手酸，也吃存储。
+         *
+         * 和批量一样定在 5，是因为稿面（34/36/38/40）的滑块就是 5 格 —— 刻度点在
+         * 40/60/80%，20% 那颗被滑块本身盖住，滑块停在 1/5 处。写成 10 的话同一个
+         * 滑块会画成 10 格、落点掉到 10%，和稿面对不上。
+         */
+        private const val MAX_SINGLE_COPIES = 5
 
         /** 跨应用批量时的份数上限（也是平板右栏步进器的上限） */
         private const val MAX_BATCH_COPIES = 5
+
+        /** 批量弹窗里滑块的起始份数：默认两份，一份的话就走单应用那条路了 */
+        private const val DEFAULT_BATCH_COPIES = 2
 
         private const val KEY_QUERY = "picker.query"
         private const val KEY_FILTER = "picker.filter"

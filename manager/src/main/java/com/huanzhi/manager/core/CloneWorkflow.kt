@@ -60,14 +60,25 @@ class CloneWorkflow(private val ctx: Context) {
         record
     }
 
-    /** 把已经构建好的 APK 提交给系统安装器 */
-    fun install(record: CloneRecord, onProgress: ((Float) -> Unit)? = null): Boolean {
+    /**
+     * 把已经构建好的 APK 提交给系统安装器。
+     *
+     * [keepApk] 成败都留一份在暂存目录里 —— 只给「这一份装失败了，待会儿还想再试一次」
+     * 那条路径用（见 [BatchRunner]）。重试的时候重新打包要几十秒、几百 MB，
+     * 而重提交这份包只要一两秒：失败的那一份恰恰是最可能需要再试一次的。
+     * 代价是失败的那份会占着等量空间，所以装成功时立刻删、进程下次启动时也会被 [CloneCache.sweep] 清掉。
+     */
+    fun install(
+        record: CloneRecord,
+        keepApk: Boolean = false,
+        onProgress: ((Float) -> Unit)? = null,
+    ): Boolean {
         val apk = File(record.apkPath)
         if (!apk.exists()) {
             InstallBus.dispatch(record.clonePkg, false, "安装包已丢失，请重新生成")
             return false
         }
-        return submit(apk, record.clonePkg, onProgress)
+        return submit(apk, record.clonePkg, keepApk, onProgress)
     }
 
     /**
@@ -80,10 +91,11 @@ class CloneWorkflow(private val ctx: Context) {
     private fun submit(
         apk: File,
         clonePkg: String,
+        keepApk: Boolean = false,
         onProgress: ((Float) -> Unit)? = null,
     ): Boolean {
         val ok = ApkInstaller.install(ctx, apk, clonePkg, onProgress)
-        CloneCache.drop(apk)
+        if (!keepApk) CloneCache.drop(apk)
         return ok
     }
 
@@ -166,7 +178,7 @@ class CloneWorkflow(private val ctx: Context) {
 
     /** 提交已构建好的包；返回是否成功写入安装会话 */
     fun submitStaged(staged: Staged, onProgress: ((Float) -> Unit)? = null): Boolean =
-        submit(staged.apk, staged.record.clonePkg, onProgress)
+        submit(staged.apk, staged.record.clonePkg, onProgress = onProgress)
 
     /**
      * 把构建结果写回记录。

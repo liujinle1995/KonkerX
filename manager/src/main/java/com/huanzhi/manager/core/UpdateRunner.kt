@@ -170,6 +170,31 @@ object UpdateRunner {
                     else -> failed += Fail(rec.label, outcome.reason)
                 }
                 InstallLog.append(app, "update ${rec.clonePkg} -> ${outcome.reason}")
+                // 更新也是一次安装，失败了一样要留痕 —— 否则「我把分身更新到最新版了」
+                // 之后它没变，用户找不到任何证据说明到底试没试过
+                val kind = when {
+                    landed -> LogEvent.Kind.Installed
+                    outcome.code == -1 -> LogEvent.Kind.Cancelled
+                    else -> LogEvent.Kind.Failed
+                }
+                LogBook.append(
+                    app,
+                    LogEvent(
+                        at = System.currentTimeMillis(),
+                        kind = kind,
+                        appLabel = rec.targetLabel,
+                        cloneName = rec.label,
+                        clonePkg = rec.clonePkg,
+                        sourcePkg = rec.targetPkg,
+                        code = LogBook.codeOf(outcome.reason),
+                        reason = if (landed) "" else outcome.reason,
+                        bytes = apkBytes,
+                        buildMs = 0,
+                        installMs = 0,
+                        cachePath = "",
+                        snapshot = RecordSnapshot.of(rec),
+                    )
+                )
                 emit(
                     Progress(
                         idx + 1,

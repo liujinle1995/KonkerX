@@ -36,6 +36,13 @@
     <string name="selected_apps">已选 %1$d 个应用</string>
     <string name="batch_title">批量创建分身</string>
     <string name="batch_count_label">每个应用生成 2 份</string>
+    <!-- 创建分身弹窗（design/34–41）：份数行、按钮与空间预估 -->
+    <string name="cc_count_batch">每个应用生成 %1$d 份 · 共 %2$d 个分身</string>
+    <!-- 逐项定过份数时不能再说「每个应用生成 N 份」 -->
+    <string name="cc_count_batch_total">共 %1$d 个分身</string>
+    <string name="cc_create_many">创建 %1$d 个</string>
+    <string name="cc_space_ok">预计占用 %1$s，当前可用 %2$s</string>
+    <string name="cc_space_low">预计需要 %1$s，当前可用 %2$s：空间可能不够</string>
     <string name="batch_note">每个分身都是一个独立 APK，体积约等于原应用；创建时每一份都要在系统弹窗里确认一次，在弹窗上点取消可以中止后续。</string>
     <string name="batch_done_title">批量创建完成</string>
 
@@ -445,4 +452,42 @@
     <string name="pk_no_apps">没有找到可分身的应用</string>
     <string name="pk_empty_cloned">还没有为任何应用建过分身</string>
     <string name="pk_empty_unsupported">没有检测到分片安装的应用</string>
+    <!-- 安装日志弹层 -->
+    <string name="log_title">安装日志</string>
+    <string name="log_copy">复制</string>
+    <string name="log_close">关闭</string>
+    <string name="log_tab_all">全部</string>
+    <string name="log_tab_failed">失败</string>
+    <string name="log_tab_ok">成功</string>
+    <string name="log_badge_failed">安装失败</string>
+    <string name="log_badge_cancelled">已取消</string>
+    <string name="log_badge_skipped">已跳过</string>
+    <string name="log_badge_ok">已安装</string>
+    <string name="log_time_today">今天 %1$s</string>
+    <string name="log_time_yesterday">昨天 %1$s</string>
+    <string name="log_meta_pkg">%1$s · 源应用 %2$s</string>
+    <string name="log_meta_build">构建 %1$s</string>
+    <string name="log_meta_install">安装 %1$s</string>
+    <string name="log_cache_kept">缓存包已保留 · %1$s</string>
+    <string name="log_cache_gone">缓存包已清理</string>
+    <string name="log_retry">重试这一份</string>
+    <string name="log_cancel_note">你在系统安装框点了取消，这一份没有生成。</string>
+    <string name="log_skip_note">你跳过了这一份。包已经打好，稍后还能装。</string>
+    <string name="log_retry_submitted">已重新提交，请在系统弹窗里点「安装」</string>
+    <string name="log_retry_missing">这一份的安装包已经不在了，回列表面再建一次</string>
+    <string name="log_empty">还没有安装记录</string>
+    <string name="log_empty_hint">建过的每一份都会记在这里：装成了、没装成、你为什么取消。</string>
+    <string name="log_copied">已复制到剪贴板</string>
+    <string name="log_cleared">安装记录已清空</string>
+
+    <!-- 失败原因 → 接下来怎么办。构建进度页与安装日志共用 -->
+    <string name="hint_duplicate_permission">分身与原应用声明了同名权限，系统不允许重复声明。更新后重新创建即可。</string>
+    <string name="hint_no_storage">先用设置里的「清除缓存」，或卸载不用的分身，再减少每批份数。</string>
+    <string name="hint_signature">这个包名装过另一份签名不同的版本，先卸载它再装。</string>
+    <string name="hint_timeout">系统确认框要手动点「安装」。没等到结果的那几份可能稍后才装上，回列表看状态即可；显示「未安装」的点一下会重新生成并安装。</string>
+    <string name="hint_submit">检查是否允许了「安装未知应用」，以及存储是否可写。</string>
+    <string name="hint_conflict">同一包名的旧分身还装在系统里（记录可能已删）。先卸载它，或让工具重新分配序号后再试。</string>
+    <string name="hint_split">分片安装的应用暂不支持，需要换成完整 APK 再试。</string>
+    <string name="hint_dialog_blocked">系统没允许弹出安装确认框。切回幻之分身后再试一次。</string>
+    <string name="hint_build_failed">打包这一步就失败了，多半是源应用被加固或损坏。换一个应用试试。</string>
 </resources>

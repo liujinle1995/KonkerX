@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import com.huanzhi.manager.core.BatchRunner
+import com.huanzhi.manager.core.InstallHint
 import com.huanzhi.manager.core.InstallLog
 import com.huanzhi.manager.util.Formats
 import com.huanzhi.manager.ui.adaptive.WindowSizeClasses
@@ -352,30 +353,9 @@ class BuildActivity : ComponentActivity() {
         }
     }
 
-    /** 常见原因给一句「接下来怎么办」 */
-    private fun hintFor(reason: String?): String? = when {
-        reason == null -> null
-        reason.contains("权限与原应用重名") ->
-            "分身与原应用声明了同名权限，系统不允许重复声明。更新后重新创建即可。"
-        reason.contains("存储空间不足") ->
-            "先用设置里的「清除缓存」，或卸载不用的分身，再减少每批份数。"
-        reason.contains("签名与已装版本冲突") ->
-            "这个包名装过另一份签名不同的版本，先卸载它再装。"
-        reason.contains("没收到安装结果") ->
-            "系统确认框要手动点「安装」。没等到结果的那几份可能稍后才装上，回列表看状态即可；" +
-                "显示「未安装」的点一下会重新生成并安装。"
-        reason.contains("无法提交安装") ->
-            "检查是否允许了「安装未知应用」，以及存储是否可写。"
-        reason.contains("冲突") ->
-            "同一包名的旧分身还装在系统里（记录可能已删）。先卸载它，或让工具重新分配序号后再试。"
-        reason.contains("分片") -> "分片安装的应用暂不支持，需要换成完整 APK 再试。"
-        else -> null
-    }
+    /** 常见原因给一句「接下来怎么办」—— 这张卡和安装日志的失败卡说的是同一件事 */
+    private fun hintFor(reason: String?): String? = InstallHint.of(this, reason)
 
-    /**
-     * 原因不确定时，让用户能把原始状态一次性复制出来。
-     * 光看「安装失败」谁也判断不了，日志里才有 INSTALL_FAILED_* 这类真凭实据。
-     */
     /**
      * 原因不确定时，让用户能把原始状态一次性复制出来。
      * 光看「安装失败」谁也判断不了，日志里才有 INSTALL_FAILED_* 这类真凭实据。

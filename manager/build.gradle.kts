@@ -27,8 +27,8 @@ android {
         minSdk = 31
         // 支持区间：Android 12 (API 31) ~ Android 17 (API 37)
         targetSdk = 37
-        versionCode = 24
-        versionName = "3.10"
+        versionCode = 25
+        versionName = "3.11"
     }
 
     signingConfigs {
