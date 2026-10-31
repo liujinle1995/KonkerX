@@ -205,7 +205,7 @@ fun CloneCard(
             )
             .clip(RoundedCornerShape(d.cardCorner))
             .clickableBouncy(onClick = onClick)
-            .padding(horizontal = d.cardPadding)
+            .padding(start = d.cardPaddingStart, end = d.cardPaddingEnd)
             .semantics(mergeDescendants = true) {
                 this.selected = selected
                 contentDescription = "$label，$meta，$statusText"

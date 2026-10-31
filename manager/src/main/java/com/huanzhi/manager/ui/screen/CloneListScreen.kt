@@ -170,7 +170,7 @@ fun CloneListScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
-                .padding(horizontal = d.pagePadding)
+                .padding(horizontal = d.tabBarSideInset)
                 .padding(bottom = d.tabBarInset),
         )
     }

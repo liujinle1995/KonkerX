@@ -151,7 +151,15 @@ data class HzDimens(
     val cardHeight: androidx.compose.ui.unit.Dp = 88.dp,
     val cardGap: androidx.compose.ui.unit.Dp = 20.dp,
     val cardCorner: androidx.compose.ui.unit.Dp = 16.dp,
-    val cardPadding: androidx.compose.ui.unit.Dp = 16.dp,
+    /**
+     * 卡片内边距左右不等：实测左边 12dp、右边 16dp。
+     *
+     * 不是手抖 —— 图标是实心色块、贴边 12dp 看起来正好；而右侧是 13sp 文字加一个
+     * 细箭头，字号小、视觉重量轻，同样的 12dp 会显得"贴到边上了"。设计上常用这种
+     * 光学校正，按数值统一成 16/16 反而会让右边显得局促。
+     */
+    val cardPaddingStart: androidx.compose.ui.unit.Dp = 12.dp,
+    val cardPaddingEnd: androidx.compose.ui.unit.Dp = 16.dp,
     val iconSize: androidx.compose.ui.unit.Dp = 48.dp,
     val iconCorner: androidx.compose.ui.unit.Dp = 12.dp,
     /** 大标题到副标题的间距 */
@@ -160,6 +168,13 @@ data class HzDimens(
     /** 底部玻璃导航栏胶囊高 70dp，距底 16dp（留出系统手势区） */
     val tabBarHeight: androidx.compose.ui.unit.Dp = 70.dp,
     val tabBarInset: androidx.compose.ui.unit.Dp = 16.dp,
+    /**
+     * 导航栏的水平外边距 20dp，比页面的 16dp 更大。
+     *
+     * 实测如此，而且是对的：卡片是矩形块，16dp 的边距已经能"呼吸"；
+     * 而导航栏是大圆角胶囊，圆角会把视觉轮廓往里收，同样的边距看起来会比卡片更贴边。
+     */
+    val tabBarSideInset: androidx.compose.ui.unit.Dp = 20.dp,
     val tabBarCorner: androidx.compose.ui.unit.Dp = 35.dp,
     val fabSize: androidx.compose.ui.unit.Dp = 56.dp,
     val touchMin: androidx.compose.ui.unit.Dp = 48.dp,
