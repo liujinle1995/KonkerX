@@ -330,4 +330,52 @@
     <string name="value_pending_n">%1$d 个待确认</string>
     <string name="value_qr_in_album">收款码存相册</string>
     <string name="value_none">—</string>
+
+    <!--
+      运行概览（3.7 版式，对应 design/12、13 稿）。
+
+      与上面的 runtime_* 不是重复：那一组是 3.6 的旧版式文案（「逐个分身」「设备内存」
+      「已用 X / 共 Y」），版式换成「三张统计卡 + 分段占用条」之后用不上了，但设备内存
+      那段说明仍被关于页引用，所以两组并存、互不覆盖。
+    -->
+    <string name="rt_auto_on">每 3 秒自动刷新 · %1$s</string>
+    <string name="rt_auto_off">自动刷新已暂停 · %1$s</string>
+    <string name="rt_updated">%1$s更新</string>
+    <string name="rt_just_now">刚刚</string>
+    <string name="rt_section_storage">各分身占用</string>
+    <string name="rt_source_stats">StorageStats</string>
+    <string name="rt_source_stats_refresh">StorageStats · 每 3 秒刷新</string>
+
+    <string name="rt_metric_total">分身占用</string>
+    <string name="rt_metric_total_wide">分身总占用</string>
+    <string name="rt_metric_total_sub">%1$d 个分身</string>
+    <string name="rt_metric_total_sub_wide">%1$d 个分身 · 不含源应用</string>
+    <string name="rt_metric_fg_unit">个</string>
+    <string name="rt_metric_fg_none">没有分身在前台</string>
+    <string name="rt_metric_cache">缓存包</string>
+    <string name="rt_metric_cache_wide">待清理缓存包</string>
+    <string name="rt_metric_cache_sub">装完即删</string>
+    <string name="rt_metric_cache_sub_wide">装完即删，无残留</string>
+    <string name="rt_note_memory">内存读数在多数真机不可见 · 本页只展示存储占用与前台状态</string>
+
+    <string name="rt_row_foreground">正在前台 · 前台时长 %1$s</string>
+    <string name="rt_row_recent">最近启动 · %1$s</string>
+    <string name="rt_row_never">从未启动</string>
+    <string name="rt_row_missing">安装包已不在</string>
+    <string name="rt_status_idle">未运行</string>
+    <string name="rt_status_risky">启动有风险</string>
+    <string name="rt_status_foreground">前台运行</string>
+
+    <string name="rt_panel_source">数据从哪来</string>
+    <string name="rt_panel_source_storage">存储占用</string>
+    <string name="rt_panel_source_storage_body">StorageStatsManager 按包精确统计，含数据目录与缓存</string>
+    <string name="rt_panel_source_usage">前台与最近启动</string>
+    <string name="rt_panel_source_usage_body">UsageStatsManager 读取系统使用记录，3 秒刷新一次</string>
+    <string name="rt_panel_source_mem">内存读数</string>
+    <string name="rt_panel_source_mem_body">多数真机不可见，本页不展示内存</string>
+    <string name="rt_panel_cache_body">每次安装完成后自动删除 APK，不留残留。若中途失败会保留到下次启动再清理。</string>
+    <string name="rt_panel_auto">自动刷新</string>
+    <string name="rt_panel_auto_sub">每 3 秒 · 仅在页面可见时</string>
+    <string name="rt_action_refresh_now">立即刷新</string>
+    <string name="rt_last_refresh">上次刷新 %1$s</string>
 </resources>

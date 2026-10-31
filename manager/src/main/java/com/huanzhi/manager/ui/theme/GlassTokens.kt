@@ -150,6 +150,18 @@ data class HzTypography(
     val railTitle: TextStyle,
     /** 侧栏导航项文字，15sp */
     val railItem: TextStyle,
+    /** 统计数值的单位（「GB」「个」）15sp 常规 —— 与 28sp 的数字同一行，靠字号差拉开主次 */
+    val metricUnit: TextStyle,
+    /** 页内小标题（「各分身占用」）15sp 半粗。比卡片标题的 17sp 小一档，它是分区而不是内容 */
+    val sectionTitle: TextStyle,
+    /**
+     * 右栏说明面板的正文，12sp / 16sp 行高。
+     *
+     * 比卡片正文的 13sp/18sp 小一档，数值量自稿面：面板正文的行间距实测 64px @4x = 16dp。
+     * 面板只有 230dp 宽、里面是三段说明，用 13sp 的话「StorageStatsManager 按包精确统计」
+     * 这一句会挤成三行还带一个孤字 —— 稿面是两行。
+     */
+    val panelBody: TextStyle,
 )
 
 private val Typography = HzTypography(
@@ -169,6 +181,9 @@ private val Typography = HzTypography(
     /** 侧栏顶部应用名，24sp 粗 —— 与内容区页标题同档，它俩是同一屏上的两个标题 */
     railTitle = TextStyle(fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold),
     railItem = TextStyle(fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium),
+    metricUnit = TextStyle(fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium),
+    sectionTitle = TextStyle(fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold),
+    panelBody = TextStyle(fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Normal),
 )
 
 /**
@@ -235,6 +250,28 @@ data class HzDimens(
     val rowHeight: androidx.compose.ui.unit.Dp = 52.dp,
     /** 设置页组内行的左内边距：图标贴边 14dp，与卡片右侧的 16dp 形成光学校正 */
     val rowPaddingStart: androidx.compose.ui.unit.Dp = 14.dp,
+
+    // ------------------------------------------------------------ 运行概览
+    /**
+     * 运行概览的行高 76dp，比主页的 88dp 矮一档。
+     *
+     * 不是"随手画矮了"：这一页每行左侧要放「名称 + 启动时间」、右侧要放「数值 + 状态」，
+     * 信息密度比主页高，行再高就散了。稿面手机量得 78dp、平板 74dp，取中间是刻意的 ——
+     * 同一个组件在两个形态上差 4dp 只会让人以为哪边没对齐。
+     */
+    val runtimeRowHeight: androidx.compose.ui.unit.Dp = 76.dp,
+    /** 运行概览卡圆角 12dp（稿面实测 48px），比主页卡的 16dp 收一档 */
+    val runtimeRowCorner: androidx.compose.ui.unit.Dp = 12.dp,
+    /** 运行概览行内图标 40dp（主页 48dp）：行矮了图标也得跟着收，否则上下留白只剩 14dp */
+    val runtimeIcon: androidx.compose.ui.unit.Dp = 40.dp,
+    val runtimeRowGap: androidx.compose.ui.unit.Dp = 8.dp,
+    /** 三张统计卡：手机 92dp、平板 103dp，多出来的 11dp 全给了第三条说明的加长版文案 */
+    val metricHeight: androidx.compose.ui.unit.Dp = 92.dp,
+    val metricHeightWide: androidx.compose.ui.unit.Dp = 103.dp,
+    /** 分段占用条 7dp 高。比它再细就分不清五段，再粗就抢了下面列表的注意力 */
+    val segmentBarHeight: androidx.compose.ui.unit.Dp = 7.dp,
+    /** 平板右栏固定 230dp：里面只有三块短文案加一个开关，宽了只是留白变多 */
+    val panelWidth: androidx.compose.ui.unit.Dp = 230.dp,
 )
 
 /** 最小可点区域。低于 48dp 的按钮一律用它兜住，不靠调用方自觉 */
@@ -255,6 +292,27 @@ object HzIconTint {
     val green = Color(0xFF34C759)
     val red = Color(0xFFFF3B30)
     val pink = Color(0xFFFF2D55)
+}
+
+/**
+ * 分段占用条的五档颜色，按数值从大到小依次取用。
+ *
+ * 同样**不随主题变**。这条色带的任务是让五段一眼分得开，而不是表达"这一份是什么状态"；
+ * 一旦跟着主题换档，深浅两套下的段序就变了，用户切一次主题会以为自己看错了图。
+ * 顺序也不是随手排的：靛 → 蓝 → 绿 → 橙 → 粉，相邻两段色相至少隔 60°，
+ * 排在最前面的永远是最大的一块，所以第一段必须是最"沉"的靛蓝，否则最大那块会跳出来抢焦点。
+ */
+object HzSegmentColors {
+    val indigo = Color(0xFF5E5CE6)
+    val blue = Color(0xFF007AFF)
+    val green = Color(0xFF34C759)
+    val orange = Color(0xFFFF9500)
+    val pink = Color(0xFFFF2D55)
+
+    /** 超过五段时循环取用 —— 第六个分身用回靛蓝，靠位置而不是靠颜色区分 */
+    val all: List<Color> = listOf(indigo, blue, green, orange, pink)
+
+    fun at(index: Int): Color = all[index % all.size]
 }
 
 val LocalHzPalette = staticCompositionLocalOf { LightPalette }

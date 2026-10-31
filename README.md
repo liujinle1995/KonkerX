@@ -371,17 +371,23 @@ D:\app\KonkerX\
 │           ├── MainActivity.kt          分身列表、启动、长按菜单、运行概览 / 设置入口
 │           ├── AppPickerActivity.kt     选择目标应用 + 搜索/首字母索引 + 命名 / 份数 + 跨应用多选批量
 │           ├── NamingDialog.kt          逐份命名弹窗（一份一个输入框）
-│           ├── RuntimeActivity.kt       运行概览：设备内存、逐个分身占用与使用状态
-│           ├── RuntimeAdapter.kt        概览列表（DiffUtil，避免 3 秒刷新闪图）
+│           ├── RuntimeActivity.kt       运行概览：三张统计卡、分色占用条、逐行体积与状态
 │           ├── SettingsActivity.kt      外观 / 存储 / 关于
 │           ├── AboutActivity.kt         插件说明（精简一屏）
 │           ├── ManualActivity.kt        技术说明二级页（原理、模块、读数口径、隐私）
 │           ├── DocRenderer.kt           两页共用的说明排版
 │           ├── ChangelogDialog.kt       可展开的版本更新记录弹窗
 │           ├── CloneAdapter.kt / AppAdapter.kt
+│           ├── ui/                      界面层（Compose，3.7 起）
+│           │   ├── theme/               色板 / 排版 / 尺寸令牌（数值逐点采自设计稿）
+│           │   ├── glass/               液态玻璃材质与按压缩放
+│           │   ├── components/          卡片、图标块、底部胶囊、侧栏
+│           │   ├── nav/AppScaffold.kt   同一份内容两种导航：底部胶囊 / 左侧栏
+│           │   ├── screen/              主页、运行概览、设置三屏（手机 + 平板两套排布）
+│           │   ├── adaptive/            窗口宽度 → COMPACT / MEDIUM / EXPANDED
+│           │   └── motion/              转场曲线与级联
 │           ├── util/
-│           │   ├── Formats.kt           大小与相对时间格式化
-│           │   └── Screen.kt            屏宽 → 列数
+│           │   └── Formats.kt           大小与相对时间格式化
 │           └── core/
 │               ├── AxmlPatcher.kt       ★ 二进制清单改写（核心技术）
 │               ├── ArscPatcher.kt       resources.arsc 包名改写

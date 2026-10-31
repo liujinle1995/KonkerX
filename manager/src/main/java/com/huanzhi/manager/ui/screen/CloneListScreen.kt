@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.huanzhi.manager.R
 import com.huanzhi.manager.core.CloneRecord
+import com.huanzhi.manager.core.UpdateKind
 import com.huanzhi.manager.ui.adaptive.WindowSizeClass
 import com.huanzhi.manager.ui.adaptive.gridColumns
 import com.huanzhi.manager.ui.adaptive.rememberWindowSizeClass
@@ -83,12 +84,38 @@ enum class CloneStatus {
 }
 
 /**
+ * 一个分身此刻的语义状态。**全应用唯一一处判定。**
+ *
+ * 主页卡片与运行概览必须得出同一个结论 —— 同一个分身在两个页面上显示不同状态，
+ * 用户只会认为其中一个在瞎报，而且没法判断是哪个。所以判定顺序只写在这里：
+ * 「装没装上」压过「要不要更新」，「要不要更新」压过「有没有风险」，
+ * 风险和运行状态都排在最后，因为它们只在"已经能跑"的前提下才有意义。
+ *
+ * [running] 传的是 `/proc` 里看得到进程，不等于在前台 —— 前台与否由调用方
+ * 在文案里区分（见 [RuntimeRowUi.foreground]）。
+ */
+fun resolveCloneStatus(
+    installed: Boolean,
+    kind: UpdateKind,
+    hardening: String?,
+    running: Boolean,
+    lastUsedMs: Long,
+): CloneStatus = when {
+    !installed -> CloneStatus.NotInstalled
+    kind == UpdateKind.AVAILABLE -> CloneStatus.Updatable
+    kind == UpdateKind.SOURCE_GONE -> CloneStatus.SourceGone
+    hardening != null -> CloneStatus.Risky
+    running -> CloneStatus.Running
+    lastUsedMs > 0L -> CloneStatus.Recent
+    else -> CloneStatus.NeverLaunched
+}
+
+/**
  * 一张卡片要显示的全部信息。
  *
  * 只带语义，不带颜色；`meta` 是副标题（包名 · 体积），`recentLabel` 仅在
  * [CloneStatus.Recent] 时有值（"12 分钟前"）。
- */
-data class CloneCardUi(
+ */data class CloneCardUi(
     val rec: CloneRecord,
     val meta: String,
     val status: CloneStatus,
@@ -415,7 +442,10 @@ private fun MetricCard(
         modifier
             .height(92.dp)
             .drawBehindCard(colors.surface, colors.isDark)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            // 上下 8dp 而不是 12dp：三行字（13sp/28sp/13sp）加上两个 2dp 间距要 72dp，
+            // 12dp 内边距只剩 68dp，最后一行会被裁掉半截 —— 卡高按稿面还是 92dp，
+            // 收的是内边距
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.Center,
     ) {
         Text(

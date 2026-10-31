@@ -31,6 +31,56 @@ object Formats {
      */
     fun knownSize(bytes: Long): String = if (bytes <= 0L) "0 B" else size(bytes)
 
+    /**
+     * 紧凑体积，用于卡片右侧与统计卡的大数字。
+     *
+     * 和 [size] 的区别是**小数位的取舍方向不同**：
+     * `size` 追求"同一量级报同一精度"（512.0 MB / 1.30 GB），适合正文里的整句；
+     * 而这个函数追求"三位数以内" —— 512 MB 不是 512.0 MB，1.3 GB 不是 1.30 GB。
+     * 卡片右侧只有 17sp 一格宽，多两位小数会把「412 MB」挤成「412.0 M…」。
+     *
+     * 0 报 `0 B`：这里所有的 0 都是扫出来的（缓存、总占用），不是"没测到"。
+     */
+    fun compact(bytes: Long): String {
+        if (bytes < 0L) return "—"
+        if (bytes == 0L) return "0 B"
+        val kb = bytes / 1024.0
+        return when {
+            bytes < 1024L -> "$bytes B"
+            bytes < 1024L * 1024 -> String.format(Locale.getDefault(), "%.0f KB", kb)
+            bytes < 1024L * 1024 * 1024 -> {
+                val mb = kb / 1024
+                // 10 MB 以上不再给小数：99.6 MB 读起来比 100 MB 更费劲，而那些位数的精度
+                // 对一个"占了多少空间"的判断没有任何影响
+                if (mb >= 10) String.format(Locale.getDefault(), "%.0f MB", mb)
+                else String.format(Locale.getDefault(), "%.1f MB", mb)
+            }
+            else -> {
+                val gb = kb / 1024 / 1024
+                val s = String.format(Locale.getDefault(), "%.1f GB", gb)
+                // 2.0 GB 写成 2 GB：整数没必要拖一个 .0
+                if (s.endsWith(".0 GB")) s.removeSuffix(".0 GB") + " GB" else s
+            }
+        }
+    }
+
+    /**
+     * 前台时长：「2 小时 14 分」「18 分钟」。
+     *
+     * 不报秒：UsageStats 的 `totalTimeInForeground` 是累计值，精确到秒反而暗示了
+     * 一个它给不出的精度。不足 1 分钟显示「不到 1 分钟」——直接写「0 分钟」会被读成
+     * "没在前台"，而事实恰恰相反。
+     */
+    fun duration(millis: Long): String {
+        if (millis <= 0L) return "0 分钟"
+        val min = millis / 60000L
+        return when {
+            min < 1 -> "不到 1 分钟"
+            min < 60 -> "$min 分钟"
+            else -> "${min / 60} 小时 ${min % 60} 分"
+        }
+    }
+
     /** 「刚刚 / 12 分钟前 / 3 小时前」，用于展示上次启动时间 */
     fun relative(millis: Long, now: Long = System.currentTimeMillis()): String {
         if (millis <= 0L) return ""

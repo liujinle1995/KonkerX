@@ -35,6 +35,7 @@ import com.huanzhi.manager.ui.screen.CloneCardUi
 import com.huanzhi.manager.ui.screen.CloneListScreen
 import com.huanzhi.manager.ui.screen.CloneListUiState
 import com.huanzhi.manager.ui.screen.CloneStatus
+import com.huanzhi.manager.ui.screen.resolveCloneStatus
 import com.huanzhi.manager.ui.theme.HuanZhiTheme
 import com.huanzhi.manager.util.Formats
 import kotlinx.coroutines.Dispatchers
@@ -328,15 +329,13 @@ class MainActivity : AppCompatActivity() {
         kind: UpdateKind,
         hardening: String?,
         rt: CloneRuntime?,
-    ): CloneStatus = when {
-        !installed -> CloneStatus.NotInstalled
-        kind == UpdateKind.AVAILABLE -> CloneStatus.Updatable
-        kind == UpdateKind.SOURCE_GONE -> CloneStatus.SourceGone
-        hardening != null -> CloneStatus.Risky
-        rt?.running == true -> CloneStatus.Running
-        (rt?.usage?.lastUsedMs ?: 0L) > 0L -> CloneStatus.Recent
-        else -> CloneStatus.NeverLaunched
-    }
+    ): CloneStatus = resolveCloneStatus(
+        installed = installed,
+        kind = kind,
+        hardening = hardening,
+        running = rt?.running == true,
+        lastUsedMs = rt?.usage?.lastUsedMs ?: 0L,
+    )
 
     /**
      * 一键更新：把「源应用已升级、分身还是旧版」的那些逐个重打包并覆盖安装。
