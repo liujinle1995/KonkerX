@@ -1,48 +1,49 @@
 package com.huanzhi.manager
 
-import com.huanzhi.manager.ui.adaptive.WindowSizeClasses
-
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.DialogInterface
 import android.os.Build
 import android.os.Bundle
-import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
+import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.GridLayoutManager
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.huanzhi.manager.core.ApkInstaller
 import com.huanzhi.manager.core.AppEntry
 import com.huanzhi.manager.core.AppScanner
+import com.huanzhi.manager.core.BatchRunner
 import com.huanzhi.manager.core.BuildCancelledException
 import com.huanzhi.manager.core.BuildControl
-import com.huanzhi.manager.core.BatchRunner
 import com.huanzhi.manager.core.CloneStore
 import com.huanzhi.manager.core.CloneWorkflow
 import com.huanzhi.manager.core.HardeningDetector
 import com.huanzhi.manager.core.InstallLog
 import com.huanzhi.manager.core.Pinyin
-import com.huanzhi.manager.core.SettingsStore
 import com.huanzhi.manager.core.StorageCheck
 import com.huanzhi.manager.core.TemplateSpec
-import com.huanzhi.manager.databinding.ActivityPickerBinding
 import com.huanzhi.manager.databinding.DialogBatchBinding
 import com.huanzhi.manager.databinding.DialogCloneNameBinding
 import com.huanzhi.manager.databinding.ItemNameEditBinding
-import com.huanzhi.manager.ui.AppIndexBar
-import com.huanzhi.manager.ui.motion.Curve
-import com.huanzhi.manager.ui.motion.Dur
-import com.huanzhi.manager.ui.motion.appear
-import com.huanzhi.manager.ui.motion.cascade
-import com.huanzhi.manager.ui.motion.disappear
+import com.huanzhi.manager.ui.ProgressDialog
+import com.huanzhi.manager.ui.adaptive.WindowSizeClass
+import com.huanzhi.manager.ui.adaptive.WindowSizeClasses
+import com.huanzhi.manager.ui.screen.AppPickerScreen
+import com.huanzhi.manager.ui.screen.AppPickerUiState
+import com.huanzhi.manager.ui.screen.PickerAppUi
+import com.huanzhi.manager.ui.screen.PickerFilter
+import com.huanzhi.manager.ui.screen.PickerSectionUi
+import com.huanzhi.manager.ui.theme.HuanZhiTheme
 import com.huanzhi.manager.util.Formats
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -51,87 +52,78 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
+/**
+ * 选应用页。
+ *
+ * 3.9 起界面层迁到 Compose，这个 Activity 只留「扫描 → 过滤 → 选中 → 建包」这条链路。
+ * 与主页不同的是，这一页**交互模型**也改了，不只是外观：
+ *
+ * · 手机保留「点一行直接建一个」—— 这是从 1.0 起就有的路径，用户已经形成习惯，
+ *   不该为一次视觉改版改掉；点「多选」才进勾选态。
+ * · 平板一进来就是勾选态：右侧的已选面板必须先有选中项才有内容。平板上把
+ *   「选应用」和「定份数」拆成两步，等于让人在左右两个区域之间来回跑。
+ *
+ * 「不支持」现在**在扫描阶段就能判出来**（[AppEntry.split]），不再等到建包时才报
+ * 「分片不支持」—— 那时候用户已经点完确认、等了半分钟。
+ */
 class AppPickerActivity : AppCompatActivity() {
 
-    private lateinit var b: ActivityPickerBinding
-    private lateinit var adapter: AppAdapter
     private lateinit var workflow: CloneWorkflow
 
-    /** 全部可分身应用，按拼音排好序 */
-    private var apps: List<AppEntry> = emptyList()
+    /** 渲染状态。Compose 观察它，赋值即重绘 */
+    private var ui by mutableStateOf(AppPickerUiState())
 
-    /** 当前列表里真正显示的（搜索时是过滤后的子集） */
-    private var shown: List<AppEntry> = emptyList()
+    /** 全量应用（拼音序、已带加固信息） */
+    private var scanned: List<AppEntry> = emptyList()
+    private var byPkg: Map<String, AppEntry> = emptyMap()
 
-    /** 右侧首字母索引条（含拖动跟踪与首字母气泡） */
-    private lateinit var indexBar: AppIndexBar
-
-    /** 交给 RecyclerView 的行：普通应用 + 一条「带加固壳」分组标题 */
-    private var rows: List<AppRow> = emptyList()
+    /** 已经有分身的源包名，供「已分身」筛选用 */
+    private var clonedPkgs: Set<String> = emptySet()
 
     private var query = ""
-
-    // 多选状态
+    private var filter = PickerFilter.All
     private var selectionMode = false
-    private val selected = LinkedHashSet<String>()
 
-    private var progressDlg: com.huanzhi.manager.ui.ProgressDialog? = null
+    /** 选中的包名 → 份数，按选中顺序。份数只在平板右栏改得到 */
+    private val selected = LinkedHashMap<String, Int>()
 
-    /** 列表是否已经级联播放过（只放一次，见 cascadeFirstList） */
-    private var cascaded = false
+    private var wide = false
+
+    private var progressDlg: ProgressDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        b = ActivityPickerBinding.inflate(layoutInflater)
-        setContentView(b.root)
+        // 内容画到状态栏底下，顶栏才和系统状态栏连成一片
+        enableEdgeToEdge()
+        wide = WindowSizeClasses.of(this) == WindowSizeClass.EXPANDED
+        // 平板一进来就是勾选态：右侧面板没有选中项就是个空盒子
+        selectionMode = wide
+        // 转屏 / 切深浅色会把 Activity 重建，勾了半天的清单不能就此清空
+        restorePicked(savedInstanceState)
 
         workflow = CloneWorkflow(this)
-        adapter = AppAdapter(::onAppClick, ::onAppLongClick)
-        val columns = WindowSizeClasses.pickerColumns(this)
-        val lm = GridLayoutManager(this, columns)
-        // 分组标题要占满整行；平板上两列时，否则标题只会占左边半格，看着像漏了一列
-        lm.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-            override fun getSpanSize(position: Int): Int =
-                if (rows.getOrNull(position) is AppRow.Header) columns else 1
-        }
-        b.list.layoutManager = lm
-        b.list.adapter = adapter
-        b.toolbar.setNavigationOnClickListener { finish() }
 
-        b.toolbar.inflateMenu(R.menu.menu_picker)
-        b.toolbar.setOnMenuItemClickListener { item ->
-            if (item.itemId == R.id.action_multi) {
-                toggleSelectionMode()
-                true
-            } else {
-                false
+        setContentView(
+            ComposeView(this).apply {
+                setContent {
+                    HuanZhiTheme {
+                        AppPickerScreen(
+                            state = ui,
+                            onBack = { finish() },
+                            onToggleSelectionMode = ::toggleSelectionMode,
+                            onCancelOrClear = ::clearOrFinish,
+                            onQuery = ::onQuery,
+                            onFilter = ::onFilter,
+                            onRowClick = ::onRowClick,
+                            onCopies = ::onCopies,
+                            onNext = ::onNext,
+                        )
+                    }
+                }
             }
-        }
+        )
 
-        b.batchGo.setOnClickListener { showBatchDialog() }
-        applySelectionState()
-
-        b.searchInput.doAfterTextChanged { editable ->
-            val next = editable?.toString().orEmpty()
-            if (next == query) return@doAfterTextChanged
-            query = next
-            applyFilter()
-        }
-
-        indexBar = AppIndexBar(b.indexBar, b.indexBubble, b.list)
-        indexBar.setup()
         load()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        // 从设置页回来时字号档位可能变了。索引条是一串动态加的 TextView，
-        // 没有「改一下 textSize」的快捷路径，重建一次最省心（字母数也就二三十个）
-        if (query.isBlank() && rows.isNotEmpty() &&
-            SettingsStore.indexTextSp(this) != indexBar.currentSp
-        ) {
-            indexBar.setRows(rows)
-        }
     }
 
     override fun onStart() {
@@ -143,7 +135,6 @@ class AppPickerActivity : AppCompatActivity() {
             showProgressDialog()
             BatchRunner.lastProgress?.let { renderProgress(it) }
         } else if (BatchRunner.lastSummary != null && progressDlg != null) {
-            // 出去了一趟，回来时批量已经结束：补一次汇总
             val s = BatchRunner.lastSummary ?: return
             BatchRunner.clearSummary()
             dismissProgress()
@@ -164,33 +155,69 @@ class AppPickerActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    // ---------------- 列表 ----------------
+    /**
+     * 转屏、切换深浅色都会重建 Activity。这一页的「已勾选 + 每项份数 + 关键词 + 筛选」
+     * 全是 Activity 里的普通字段，不写进 Bundle 就会连同 88dp 的行一起蒸发 ——
+     * 用户勾了五个应用，系统一发夜间模式广播就全没了，这不能算"小问题"。
+     *
+     * 只存包名与份数，不存 [AppEntry]：扫描结果重建后自然会再有一份，
+     * 存对象既撑大 Bundle 又可能因为应用在这期间被卸载而对不上。
+     */
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(KEY_QUERY, query)
+        outState.putString(KEY_FILTER, filter.name)
+        outState.putBoolean(KEY_MULTI, selectionMode)
+        outState.putStringArrayList(KEY_PKGS, ArrayList(selected.keys))
+        outState.putIntArray(KEY_COPIES, selected.values.toIntArray())
+    }
+
+    /** 与 [onSaveInstanceState] 配对。必须在 load() 之前跑完，扫描结束时会用它对上名字 */
+    private fun restorePicked(b: Bundle?) {
+        if (b == null) return
+        query = b.getString(KEY_QUERY).orEmpty()
+        filter = runCatching { PickerFilter.valueOf(b.getString(KEY_FILTER).orEmpty()) }
+            .getOrDefault(PickerFilter.All)
+        selectionMode = b.getBoolean(KEY_MULTI, selectionMode)
+        val pkgs = b.getStringArrayList(KEY_PKGS).orEmpty()
+        val copies = b.getIntArray(KEY_COPIES) ?: IntArray(0)
+        selected.clear()
+        pkgs.forEachIndexed { i, pkg -> selected[pkg] = copies.getOrElse(i) { 1 } }
+        // 先把关键词与筛选推上去，避免重建后搜索框先空一帧再回填
+        ui = ui.copy(query = query, filter = filter, selectionMode = selectionMode, wide = wide)
+    }
+
+    // ---------------- 扫描 ----------------
 
     private fun load() {
-        b.progress.visibility = View.VISIBLE
+        ui = ui.copy(loading = true)
         lifecycleScope.launch {
             val found = withContext(Dispatchers.IO) {
-                // 排序要用 ICU 转拼音，几百个应用放在主线程会明显卡首帧，挪到 IO
+                // 排序要用 ICU 转拼音，几百个应用放在主线程会明显卡首帧
                 Pinyin.sortByLabel(
                     AppScanner.launchableApps(this@AppPickerActivity)
                         .filter { it.pkg.toByteArray().size <= TemplateSpec.MAX_TARGET_PKG_LEN }
                 )
             }
-            // 加固探测必须放在「显示之前」：它的结果决定这一行排在哪里，
-            // 如果像以前那样先显示再逐步回填，列表会在用户眼皮底下自己往下跳
+            // 加固探测必须放在「显示之前」：结果会出现在副标题里，
+            // 先显示再逐步回填会让列表在用户眼皮底下自己跳
             val probed = withContext(Dispatchers.IO) { probeHardening(found) }
-            apps = probed
-            b.progress.visibility = View.GONE
-            if (probed.isEmpty()) toast("没有找到可分身的三方应用")
-            applyFilter()
+            val cloned = withContext(Dispatchers.IO) {
+                CloneStore(this@AppPickerActivity).all().mapNotNull { it.targetPkg }.toSet()
+            }
+
+            scanned = probed
+            byPkg = probed.associateBy { it.pkg }
+            clonedPkgs = cloned
+            push()
         }
     }
 
     /**
-     * 逐个应用探测加固壳，返回带上 brand 的列表。
+     * 逐个应用探测加固壳。
      *
      * 并行跑：每个应用要打开一次 ZipFile 读中央目录（几十毫秒），串行扫两百个应用
-     * 就是一整个能感知到的等待。探测结果在 [HardeningDetector] 里按 versionCode 缓存，
+     * 就是一整个能感知到的等待。结果在 [HardeningDetector] 里按 versionCode 缓存，
      * 所以只有第一次进这个页面会真的扫盘。
      */
     private suspend fun probeHardening(list: List<AppEntry>): List<AppEntry> =
@@ -204,61 +231,58 @@ class AppPickerActivity : AppCompatActivity() {
             }.awaitAll()
         }
 
-    /** 按搜索词过滤、分组，然后把行交给列表 */
-    private fun applyFilter() {
+    // ---------------- 状态推送 ----------------
+
+    /** 过滤 → 分组 → 推给 Compose。所有会改变画面的操作最后都落到这里 */
+    private fun push() {
         val q = query.trim()
-        shown = if (q.isEmpty()) apps else apps.filter { matches(it, q) }
-        rows = groupRows(shown)
-        adapter.submit(rows)
-        cascadeFirstList(rows)
-
-        val searching = q.isNotEmpty()
-        b.searchEmpty.visibility =
-            if (searching && shown.isEmpty() && apps.isNotEmpty()) View.VISIBLE else View.GONE
-        if (searching) {
-            b.indexBar.visibility = View.GONE
-        } else {
-            indexBar.setRows(rows)
+        val visible = scanned.filter { app ->
+            matches(app, q) && when (filter) {
+                PickerFilter.All -> true
+                PickerFilter.Cloned -> app.pkg in clonedPkgs
+                PickerFilter.Unsupported -> app.split
+            }
         }
+
+        val sections = visible
+            .groupBy { Pinyin.keyOf(it.label).letter }
+            // 「#」放最后：# 是数字与符号开头的名字，排在 A 前面会显得列表没排序
+            .toSortedMap(compareBy({ if (it == '#') 1 else 0 }, { it }))
+            .map { (letter, apps) -> PickerSectionUi(letter, apps.map(::toUi)) }
+
+        ui = ui.copy(
+            loading = false,
+            sections = sections,
+            query = query,
+            filter = filter,
+            selectionMode = selectionMode,
+            selected = LinkedHashMap(selected),
+            selectedApps = selected.keys.mapNotNull { byPkg[it] }.map(::toUi),
+            wide = wide,
+        )
     }
 
     /**
-     * 把已排好序的应用切成「普通 → 分组标题 → 带加固壳」两段。
+     * 应用 → 行数据。
      *
-     * 为什么要把带壳的挪到最下面：这类应用装上去大概率卡在启动页，
-     * 对绝大多数使用场景是噪音。留在原位会和能用的应用混在一起，
-     * 用户点进去、等四十秒、装完、启动卡住，才知道选错了。
-     *
-     * 两段内部都保持传入顺序（拼音 A–Z），所以并没有破坏排序，只是分了个区。
+     * 副标题的构成随宽度变：手机「包名 · 体积」（一列，宽度够），平板只留包名
+     * （两列时每列 321dp，「com.taobao.taobao · 412 MB」会被截成「com.taobao.tao…」）。
+     * 加固壳接在最后 —— 它决定"要不要试一把"，比体积重要，两种宽度都得看得见。
      */
-    private fun groupRows(list: List<AppEntry>): List<AppRow> {
-        if (list.isEmpty()) return emptyList()
-        val plain = list.filter { it.hardening == null }
-        val hardened = list.filter { it.hardening != null }
-        val out = ArrayList<AppRow>(list.size + 1)
-        plain.forEach { out.add(AppRow.Item(it)) }
-        if (hardened.isNotEmpty()) {
-            out.add(
-                AppRow.Header(
-                    title = getString(R.string.hardening_group_title, hardened.size),
-                    hint = getString(R.string.hardening_group_hint),
-                )
-            )
-            hardened.forEach { out.add(AppRow.Item(it)) }
+    private fun toUi(app: AppEntry): PickerAppUi {
+        val meta = buildString {
+            append(app.pkg)
+            if (!wide && app.apkBytes > 0L) append(" · ").append(Formats.compact(app.apkBytes))
         }
-        return out
-    }
-
-    /**
-     * 列表第一次从空变成有内容时，让前几项依次浮起。
-     *
-     * 只放一次：搜索过滤每次都重放的话，每敲一个字整列都会跳一遍，
-     * 那是干扰，不是「流畅」。
-     */
-    private fun cascadeFirstList(list: List<AppRow>) {
-        if (cascaded || list.isEmpty()) return
-        cascaded = true
-        b.list.post { b.list.cascade(startDelay = 40L) }
+        return PickerAppUi(
+            pkg = app.pkg,
+            label = app.label,
+            meta = meta,
+            supported = !app.split,
+            hasClone = app.pkg in clonedPkgs,
+            letter = Pinyin.keyOf(app.label).letter,
+            hardened = app.hardening != null,
+        )
     }
 
     /**
@@ -267,6 +291,7 @@ class AppPickerActivity : AppCompatActivity() {
      * 但 contains 会把「adwxa」这类乱序也放进来，结果反而变吵。
      */
     private fun matches(app: AppEntry, q: String): Boolean {
+        if (q.isEmpty()) return true
         val lower = q.lowercase(Locale.ROOT)
         if (app.label.lowercase(Locale.ROOT).contains(lower)) return true
         if (app.pkg.lowercase(Locale.ROOT).contains(lower)) return true
@@ -274,59 +299,64 @@ class AppPickerActivity : AppCompatActivity() {
         return key.full.contains(lower) || key.initials.startsWith(lower)
     }
 
-    private fun onAppClick(app: AppEntry) {
-        if (selectionMode) {
-            if (!selected.remove(app.pkg)) selected.add(app.pkg)
-            applySelectionState()
-            return
-        }
-        askClone(app)
+    // ---------------- 交互 ----------------
+
+    private fun onQuery(q: String) {
+        if (q == query) return
+        query = q
+        push()
     }
 
-    private fun onAppLongClick(app: AppEntry) {
-        if (!selectionMode) {
-            selectionMode = true
-            selected.add(app.pkg)
-            applySelectionState()
-        }
+    private fun onFilter(f: PickerFilter) {
+        if (f == filter) return
+        filter = f
+        push()
     }
-
-    // ---------------- 多选 ----------------
 
     private fun toggleSelectionMode() {
         selectionMode = !selectionMode
         if (!selectionMode) selected.clear()
-        applySelectionState()
+        push()
     }
 
-    private fun applySelectionState() {
-        adapter.setSelectionMode(selectionMode)
-        adapter.setSelected(selected.toSet())
-
-        // 批量条从下方升起：它是「进入多选模式」的视觉确认，直接 GONE→VISIBLE 会显得突然
-        if (selectionMode) {
-            b.batchBar.appear(riseDp = 24f, duration = Dur.MEDIUM_3)
+    /** 平板顶栏的「取消」：有选中就先清空，已经空了才退出 —— 一次点击只做一件事 */
+    private fun clearOrFinish() {
+        if (selected.isNotEmpty()) {
+            selected.clear()
+            push()
         } else {
-            b.batchBar.disappear(Dur.SHORT_4)
+            finish()
         }
-        b.selectionCount.text = getString(R.string.selected_apps, selected.size)
-        b.batchGo.isEnabled = selected.isNotEmpty()
-        b.toolbar.menu.findItem(R.id.action_multi)?.title =
-            getString(if (selectionMode) R.string.done else R.string.multi_select)
+    }
 
-        // 批量条浮在列表上，底部留出等高的空白，最后一项不会被挡住。
-        //
-        // 用 setPaddingRelative 而不是 setPadding：列表左右的内边距在资源里是
-        // paddingStart/End（RTL 下会自动翻到另一边）。这里读出来再用 setPadding 写回去，
-        // 等于把「相对」的方向固化成了物理左右 —— RTL 下左右两侧会同时留白、方向还不翻。
-        b.list.setPaddingRelative(
-            b.list.paddingStart,
-            b.list.paddingTop,
-            b.list.paddingEnd,
-            resources.getDimensionPixelSize(
-                if (selectionMode) R.dimen.batch_bar_inset else R.dimen.space_5
-            )
-        )
+    private fun onRowClick(app: PickerAppUi) {
+        if (!app.supported) {
+            // 行本身已经灰了，但仍然说明一句：不点一下是不会知道"为什么不行"的
+            toast(getString(R.string.pk_split_toast))
+            return
+        }
+        val entry = byPkg[app.pkg] ?: return
+        if (selectionMode) {
+            if (selected.remove(app.pkg) == null) selected[app.pkg] = 1
+            push()
+        } else {
+            askClone(entry)
+        }
+    }
+
+    private fun onCopies(pkg: String, copies: Int) {
+        if (!selected.containsKey(pkg)) return
+        selected[pkg] = copies.coerceIn(1, MAX_BATCH_COPIES)
+        push()
+    }
+
+    private fun onNext() {
+        if (selected.isEmpty()) {
+            toast("先勾选要分身的应用")
+            return
+        }
+        // 平板在右栏已经定过份数，弹窗只负责命名；手机上份数仍在弹窗里调
+        showBatchDialog(if (wide) LinkedHashMap(selected) else null)
     }
 
     // ---------------- 单个应用：1 份或多份 ----------------
@@ -337,7 +367,7 @@ class AppPickerActivity : AppCompatActivity() {
      * 名称框的语义跟着份数走：
      *   · 1 份 → 填什么就叫什么；
      *   · 多份 → 填的是基础名，实际名字自动接「· 分身1 / 2 / 3」；
-     *   · 想给某一份单独起名，点「逐份」逐条改（1.9 起）。
+     *   · 想给某一份单独起名，点「逐份」逐条改。
      */
     private fun askClone(app: AppEntry) {
         if (!ApkInstaller.canInstall(this)) {
@@ -418,7 +448,7 @@ class AppPickerActivity : AppCompatActivity() {
 
         val sourceSize = StorageCheck.sourceApkSize(this, app.pkg)
         // 按钮文字要跟着份数变，先留个引用，show 之后才拿得到
-        var posButton: android.widget.Button? = null
+        var posButton: Button? = null
         fun render(n: Int) {
             copies = n
             if (customNames != null && customNames!!.size != n) customNames = null
@@ -490,10 +520,9 @@ class AppPickerActivity : AppCompatActivity() {
     /**
      * 单份创建。
      *
-     * 以前这里只是把列表藏起来、显示一个转圈，再配一句 Toast。问题在于「转圈」只说
-     * 「在忙」，说不清还要多久 —— 一个 150MB 的应用要四十秒，用户只能干等到不知道哪一刻。
-     * 现在换成带百分比的进度弹窗：阶段（准备 / 打包 / 签名 / 自检 / 安装）+ 已处理字节数，
-     * 等待变成了可预期的事。
+     * 「转圈」只说「在忙」，说不清还要多久 —— 一个 150MB 的应用要四十秒。
+     * 所以用带百分比的进度弹窗：阶段（准备 / 打包 / 签名 / 自检 / 安装）+ 已处理字节数，
+     * 等待变成可预期的事。
      */
     private fun create(app: AppEntry, name: String) {
         val cancel = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -529,13 +558,16 @@ class AppPickerActivity : AppCompatActivity() {
     // ---------------- 批量创建 ----------------
 
     /**
-     * 批量创建：份数统一，但**每个应用的名字都能单独改**（1.9 起）。
+     * 批量创建。
      *
-     * 之前只有一个「统一前缀」，几个应用批量时要么全叫「测试 · 分身1」，
-     * 要么被迫带上一串自动拼出来的应用名。现在每个应用一行输入框，
-     * 多份时还能点「逐份」把某一批里的每一份都改成不同的名字。
+     * [presetCounts] 不为空表示份数已经在上一个界面定好了（平板右栏的步进器），
+     * 这里只负责命名：隐藏统一份数的滑块，每行按自己的份数展开名字。
+     * 为空时（手机）保持老做法 —— 一个滑块统一定份数。
+     *
+     * 为什么不统一：平板右栏存在的意义就是「淘宝 2 份、微信 1 份」这种混搭，
+     * 弹窗再拿一个滑块把它们抹平，前面那一步就白做了。
      */
-    private fun showBatchDialog() {
+    private fun showBatchDialog(presetCounts: Map<String, Int>?) {
         if (selected.isEmpty()) {
             toast("先勾选要分身的应用")
             return
@@ -547,7 +579,9 @@ class AppPickerActivity : AppCompatActivity() {
 
         // 用全量列表而不是当前过滤结果：搜索状态下勾选的几个应用，
         // 不会因为输入框里还留着关键字就悄悄漏建
-        val choices = apps.filter { it.pkg in selected }
+        val choices = selected.keys.mapNotNull { byPkg[it] }
+        if (choices.isEmpty()) return
+
         val store = CloneStore(this)
         val used = store.all().size
         val maxTotal = (999 - used).coerceAtLeast(0)
@@ -575,10 +609,13 @@ class AppPickerActivity : AppCompatActivity() {
         }
 
         val sourceSizes = choices.associate { it.pkg to StorageCheck.sourceApkSize(this, it.pkg) }
-        var copies = minOf(2, maxCopies)
+        val uniform = presetCounts == null
+        var uniformCopies = minOf(2, maxCopies)
         var programmatic = false
 
         class Row(val app: AppEntry, val v: ItemNameEditBinding) {
+            /** 这一行的份数。统一模式下由滑块改，预置模式下由上一屏定死 */
+            var count: Int = 1
             /** 逐份定好的名字；null 表示按基础名自动编号 */
             var custom: List<String>? = null
             /** 用户是否手动改过基础名（改过就不再被份数变化覆盖） */
@@ -603,10 +640,10 @@ class AppPickerActivity : AppCompatActivity() {
         }
 
         fun renderRow(row: Row) {
-            val names = namesOf(row, copies)
+            val names = namesOf(row, row.count)
             row.v.rowPreview.text = "→ " + names.take(3).joinToString("、") +
                 if (names.size > 3) " … 共 ${names.size} 个" else ""
-            row.v.rowPerCopy.visibility = if (copies > 1) View.VISIBLE else View.GONE
+            row.v.rowPerCopy.visibility = if (row.count > 1) View.VISIBLE else View.GONE
         }
 
         fun defaultFor(app: AppEntry, n: Int): String =
@@ -617,7 +654,8 @@ class AppPickerActivity : AppCompatActivity() {
             v.rowTitle.text = app.label
             view.namesHost.addView(v.root)
             val row = Row(app, v)
-            setInput(row, defaultFor(app, copies))
+            row.count = (presetCounts?.get(app.pkg) ?: uniformCopies).coerceIn(1, maxCopies)
+            setInput(row, defaultFor(app, row.count))
 
             v.rowNameInput.doAfterTextChanged {
                 if (!programmatic) {
@@ -627,11 +665,11 @@ class AppPickerActivity : AppCompatActivity() {
                 renderRow(row)
             }
             v.rowPerCopy.setOnClickListener {
-                if (copies < 2) return@setOnClickListener
+                if (row.count < 2) return@setOnClickListener
                 NamingDialog.show(
                     this,
                     getString(R.string.per_copy_title, app.label),
-                    namesOf(row, copies)
+                    namesOf(row, row.count)
                 ) { names ->
                     row.custom = names
                     row.touched = true
@@ -641,33 +679,58 @@ class AppPickerActivity : AppCompatActivity() {
             row
         }
 
-        fun render(n: Int) {
-            copies = n
-            val total = choices.size * n
-            view.countLabel.text = "每个应用生成 $n 份 · 共 $total 个分身"
+        var posButton: Button? = null
+
+        fun renderAll() {
+            val total = rows.sumOf { it.count }
+            view.countLabel.text = if (uniform) {
+                "每个应用生成 $uniformCopies 份 · 共 $total 个分身"
+            } else {
+                "共 $total 个分身"
+            }
             view.countLabel.setTextColor(
                 if (total > maxTotal) 0xFFB3261E.toInt() else
                     MaterialColors.getColor(
                         view.countLabel, com.google.android.material.R.attr.colorOnSurface
                     )
             )
-            val need = choices.sumOf { StorageCheck.estimateNeeded(sourceSizes[it.pkg] ?: 0L, n) }
+            val need = rows.sumOf { StorageCheck.estimateNeeded(sourceSizes[it.app.pkg] ?: 0L, it.count) }
             applySpaceHint(view.spaceHint, need, StorageCheck.freeBytes(this))
 
             // 份数变了：没手改过的行跟着恢复默认，逐份定过的作废（数量对不上了）
             rows.forEach { row ->
-                if (row.custom != null && row.custom!!.size != n) row.custom = null
-                if (!row.touched) setInput(row, defaultFor(row.app, n))
+                if (row.custom != null && row.custom!!.size != row.count) row.custom = null
+                if (!row.touched) setInput(row, defaultFor(row.app, row.count))
                 renderRow(row)
             }
+            posButton?.text = if (total == 1) "创建" else "创建 $total 个"
         }
 
         view.slider.valueFrom = 1f
         view.slider.valueTo = maxCopies.toFloat()
-        view.slider.value = minOf(2, maxCopies).toFloat()
-        render(copies)
-        view.slider.addOnChangeListener { _, value, _ -> render(value.toInt()) }
+        view.slider.value = uniformCopies.toFloat()
+        if (uniform) {
+            view.slider.addOnChangeListener { _, value, _ ->
+                uniformCopies = value.toInt()
+                rows.forEach { if (it.count != uniformCopies) it.count = uniformCopies }
+                renderAll()
+            }
+        } else {
+            // 份数已经在上一屏定过了（每行可能不同），这里再放一个「统一份数」滑块
+            // 会让人以为一拖就能改全部，实际会把之前的设置抹掉
+            view.slider.visibility = View.GONE
+            // 这两段说明（独立 APK、每份都要确认；每行可单独改名）在选择页右栏
+            // 和每行下面的预览里已经表达过了。平板只有 768dp 高，留着它们会把
+            // 「预计占用」那一行顶出弹窗
+            view.note.visibility = View.GONE
+            view.namesHint.visibility = View.GONE
+            (view.countLabel.layoutParams as android.view.ViewGroup.MarginLayoutParams).topMargin = dp(12)
+        }
 
+        // 名称行是按选中应用逐行加的，选五个应用时内容会高过弹窗上限。
+        // **不要**自己再包一层 ScrollView：MaterialAlertDialog 在内容超高时会自己套一层，
+        // 外面再套一层的话手势会被里层吃掉（里层没有可滚范围），看上去就是"内容被截断、
+        // 而且划不动"。交给它自己处理，再顺手把这一屏用不到的说明收起来。
         val dlg = MaterialAlertDialogBuilder(this)
             .setTitle(R.string.batch_title)
             .setView(view.root)
@@ -675,16 +738,18 @@ class AppPickerActivity : AppCompatActivity() {
             .setNegativeButton(R.string.cancel, null)
             .create()
         dlg.show()
+        posButton = dlg.getButton(DialogInterface.BUTTON_POSITIVE)
+        renderAll()
 
         dlg.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener {
-            val total = choices.size * copies
+            val total = rows.sumOf { it.count }
             if (total > maxTotal) {
                 toast("超出上限，最多还能创建 $maxTotal 个")
                 return@setOnClickListener
             }
             val entries = ArrayList<Pair<AppEntry, List<String>>>(rows.size)
             for (row in rows) {
-                val names = namesOf(row, copies)
+                val names = namesOf(row, row.count)
                 if (names.any { it.isBlank() }) {
                     toast(getString(R.string.name_empty))
                     return@setOnClickListener
@@ -726,9 +791,9 @@ class AppPickerActivity : AppCompatActivity() {
             val names = rawNames.map { store.uniqueName(it, usedNames) }
             BatchRunner.Plan(app.pkg, app.label, names.size, names)
         }
-        selectionMode = false
+
         selected.clear()
-        applySelectionState()
+        push()
 
         BatchRunner.onProgress = ::renderProgress
         BatchRunner.onDone = ::onBatchDone
@@ -867,14 +932,19 @@ class AppPickerActivity : AppCompatActivity() {
 
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
 
+    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
     companion object {
         /** 单个应用一次最多生成几份：再多安装确认框会点到手酸，也吃存储 */
         private const val MAX_SINGLE_COPIES = 10
 
-        /** 跨应用批量时的份数上限 */
+        /** 跨应用批量时的份数上限（也是平板右栏步进器的上限） */
         private const val MAX_BATCH_COPIES = 5
 
-        /** 索引条末尾那个「跳到加固段」的入口。字母段全是 A–Z，不会撞 */
-        private const val HARDENED_INDEX = '加'
+        private const val KEY_QUERY = "picker.query"
+        private const val KEY_FILTER = "picker.filter"
+        private const val KEY_MULTI = "picker.multi"
+        private const val KEY_PKGS = "picker.pkgs"
+        private const val KEY_COPIES = "picker.copies"
     }
 }

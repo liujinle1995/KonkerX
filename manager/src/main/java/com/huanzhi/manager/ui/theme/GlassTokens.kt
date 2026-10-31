@@ -55,6 +55,15 @@ data class HzPalette(
     val railBg: Color,
     val railSelected: Color,
     val railDivider: Color,
+    /**
+     * 输入框与分段控件的底（iOS 的 secondarySystemFill）。
+     *
+     * 它比 background 深、又比 surface 浅：卡片是「浮起来的白」，输入框是「凹下去的灰」，
+     * 两者都不能用同一个 surface，否则搜索框摆在列表上方会像一张空卡片。
+     */
+    val fill: Color,
+    /** 分段控件里选中那一片。浅色下是纯白（压在一层灰上），深色下是一档更亮的灰 */
+    val controlSelected: Color,
     val isDark: Boolean,
 )
 
@@ -88,6 +97,8 @@ private val LightPalette = HzPalette(
     railBg = Color(0xFFF0F0F5),
     railSelected = Color(0xFFFFFFFF),
     railDivider = Color(0xFFD8D8DE),
+    fill = Color(0xFFE4E4E9),
+    controlSelected = Color(0xFFFFFFFF),
     isDark = false,
 )
 
@@ -121,6 +132,8 @@ private val DarkPalette = HzPalette(
     railBg = Color(0xFF1C1C1E),
     railSelected = Color(0xFF3A3A3C),
     railDivider = Color(0xFF38383A),
+    fill = Color(0xFF2C2C2E),
+    controlSelected = Color(0xFF636366),
     isDark = true,
 )
 
@@ -272,6 +285,35 @@ data class HzDimens(
     val segmentBarHeight: androidx.compose.ui.unit.Dp = 7.dp,
     /** 平板右栏固定 230dp：里面只有三块短文案加一个开关，宽了只是留白变多 */
     val panelWidth: androidx.compose.ui.unit.Dp = 230.dp,
+
+    // ------------------------------------------------------------ 选择应用
+    /**
+     * 选应用页的行高：手机 72dp、平板 96dp。
+     *
+     * 两个数都量自稿面，差距比主页卡的 88/112 更明显 —— 这一页每行只有
+     * 「图标 + 名字 + 包名」，没有状态列，所以行高几乎是图标高度加留白：
+     * 手机 40dp 图标配 72dp 行，平板 44dp 图标配 96dp 行。
+     */
+    val pickerRowHeight: androidx.compose.ui.unit.Dp = 72.dp,
+    val pickerRowHeightWide: androidx.compose.ui.unit.Dp = 96.dp,
+    val pickerIcon: androidx.compose.ui.unit.Dp = 40.dp,
+    val pickerIconWide: androidx.compose.ui.unit.Dp = 44.dp,
+    /** 行卡圆角 12dp（稿面 48px），与运行概览同档 —— 都是"一列短行" */
+    val pickerCorner: androidx.compose.ui.unit.Dp = 12.dp,
+    /** 搜索框 44dp 高、32dp 分段控件，都是稿面实测 */
+    val searchHeight: androidx.compose.ui.unit.Dp = 44.dp,
+    val segmentHeight: androidx.compose.ui.unit.Dp = 32.dp,
+    /** 底部总结条 64dp 高、32dp 圆角；里面那颗「下一步」78×44dp */
+    val pickerBarHeight: androidx.compose.ui.unit.Dp = 64.dp,
+    val pickerActionHeight: androidx.compose.ui.unit.Dp = 44.dp,
+    val pickerActionWidth: androidx.compose.ui.unit.Dp = 78.dp,
+    /**
+     * 平板右栏 276dp。
+     *
+     * 比运行概览的 230dp 宽：那一栏只放说明文字，这一栏要放「图标 + 名字 + 步进器」，
+     * 步进器本身就占 96dp，230dp 扣掉之后名字只剩 90dp，「淘宝」后面就得截断。
+     */
+    val pickerPanelWidth: androidx.compose.ui.unit.Dp = 276.dp,
 )
 
 /** 最小可点区域。低于 48dp 的按钮一律用它兜住，不靠调用方自觉 */

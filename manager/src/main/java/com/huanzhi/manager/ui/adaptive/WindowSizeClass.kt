@@ -49,13 +49,6 @@ object WindowSizeClasses {
             else -> WindowSizeClass.COMPACT
         }
     }
-
-    /** 选应用页：手机上一条流，平板/折叠屏展开下三列网格 */
-    fun pickerColumns(context: Context): Int = when (of(context)) {
-        WindowSizeClass.COMPACT -> 1
-        WindowSizeClass.MEDIUM -> 2
-        WindowSizeClass.EXPANDED -> 3
-    }
 }
 
 /**

@@ -11,7 +11,18 @@ data class AppEntry(
     val icon: Drawable?,
     val isSystem: Boolean,
     /** 识别到的加固壳品牌，null 表示没扫到或还没扫 */
-    val hardening: String? = null
+    val hardening: String? = null,
+    /**
+     * 分片安装包（split APK）。
+     *
+     * 这类应用把 so 和资源拆到几个 apk 里，整包复制出来只有 base 那一份，
+     * 装上去缺库必崩。以前是在构建阶段才报「不支持分片」—— 用户已经点完确认、
+     * 等了几十秒才被告知不行。扫描时就能判出来（ApplicationInfo 自带 split 列表，
+     * 不用打开 apk），所以现在提前在列表里标出来，根本不让选。
+     */
+    val split: Boolean = false,
+    /** 安装包字节数（只算 base apk）。列表副标题显示「包名 · 体积」用 */
+    val apkBytes: Long = 0L,
 )
 
 /**
@@ -38,9 +49,11 @@ object AppScanner {
 
             val label = ri.loadLabel(pm).toString()
             val icon = ri.loadIcon(pm)
+            val split = !ai.splitSourceDirs.isNullOrEmpty()
+            val bytes = runCatching { java.io.File(ai.sourceDir).length() }.getOrDefault(0L)
             val existing = out[pkg]
             // 同一个包多个入口时保留第一个
-            if (existing == null) out[pkg] = AppEntry(pkg, label, icon, system)
+            if (existing == null) out[pkg] = AppEntry(pkg, label, icon, system, split = split, apkBytes = bytes)
         }
         return out.values.sortedBy { it.label }
     }

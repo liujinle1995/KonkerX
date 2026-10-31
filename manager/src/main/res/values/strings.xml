@@ -90,11 +90,6 @@
     <string name="cancelled">已取消</string>
     <string name="app_list_loading">正在读取应用列表</string>
 
-    <!-- 加固应用分组：排在列表最下面 -->
-    <string name="hardening_group_title">带加固壳 · %1$d 个</string>
-    <string name="hardening_group_hint">这类应用会自己校验安装包，分身有较大概率卡在启动页</string>
-    <string name="hardening_group_index">加</string>
-
     <!-- 请作者喝一杯 -->
     <string name="section_support">支持作者</string>
     <string name="support_row_title">请作者喝一杯</string>
@@ -378,4 +373,26 @@
     <string name="rt_panel_auto_sub">每 3 秒 · 仅在页面可见时</string>
     <string name="rt_action_refresh_now">立即刷新</string>
     <string name="rt_last_refresh">上次刷新 %1$s</string>
+
+    <!-- 选应用页（3.9） -->
+    <string name="pk_title">选择应用</string>
+    <string name="pk_back">返回</string>
+    <string name="pk_filter_all">全部</string>
+    <string name="pk_filter_cloned">已分身</string>
+    <string name="pk_filter_unsupported">不支持</string>
+    <string name="pk_search_hint">应用名 / 拼音 / 包名</string>
+    <string name="pk_unsupported_split">不支持分片</string>
+    <string name="pk_hardening_tag">加固壳</string>
+    <string name="pk_split_toast">分片安装包暂不支持分身</string>
+    <string name="pk_next">下一步</string>
+    <string name="pk_next_total">下一步 · 共 %1$d 份</string>
+    <string name="pk_selected_header">已选应用</string>
+    <string name="pk_selected_count">%1$d 个 · 共 %2$d 份</string>
+    <string name="pk_per_copy">每份独立命名</string>
+    <string name="pk_panel_empty">还没选应用</string>
+    <string name="pk_panel_hint">每个应用可创建 1–5 个分身，逐份独立命名；同应用的多份会串行构建，装完即删缓存包。</string>
+    <string name="pk_scanning">正在扫描已安装的应用…</string>
+    <string name="pk_no_apps">没有找到可分身的应用</string>
+    <string name="pk_empty_cloned">还没有为任何应用建过分身</string>
+    <string name="pk_empty_unsupported">没有检测到分片安装的应用</string>
 </resources>
