@@ -28,6 +28,9 @@ import com.huanzhi.manager.databinding.DialogLogBinding
 import com.huanzhi.manager.databinding.DialogPayBinding
 import com.huanzhi.manager.ui.ProgressDialog
 import com.huanzhi.manager.ui.components.MainTab
+import com.huanzhi.manager.ui.dialog.glassAlert
+import com.huanzhi.manager.ui.dialog.glassChoice
+import com.huanzhi.manager.ui.dialog.glassMenu
 import com.huanzhi.manager.ui.motion.Curve
 import com.huanzhi.manager.ui.nav.AppScaffold
 import com.huanzhi.manager.ui.screen.SettingsScreen
@@ -181,14 +184,13 @@ class SettingsActivity : AppCompatActivity() {
         )
         val checked = modes.indexOf(uiState.themeMode).coerceAtLeast(0)
 
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.row_appearance)
-            .setSingleChoiceItems(labels, checked) { dlg, which ->
-                dlg.dismiss()
-                if (modes[which] != SettingsStore.themeMode(this)) switchTheme(modes[which])
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        glassChoice(
+            title = getString(R.string.row_appearance),
+            labels = labels.toList(),
+            checked = checked,
+        ) { which ->
+            if (modes[which] != SettingsStore.themeMode(this)) switchTheme(modes[which])
+        }
     }
 
     /**
@@ -210,15 +212,14 @@ class SettingsActivity : AppCompatActivity() {
         )
         val checked = scales.indexOf(uiState.indexScale).coerceAtLeast(1)
 
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.row_index_size)
-            .setSingleChoiceItems(labels, checked) { dlg, which ->
-                dlg.dismiss()
-                SettingsStore.setIndexScale(this, scales[which])
-                uiState = uiState.copy(indexScale = scales[which])
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        glassChoice(
+            title = getString(R.string.row_index_size),
+            labels = labels.toList(),
+            checked = checked,
+        ) { which ->
+            SettingsStore.setIndexScale(this, scales[which])
+            uiState = uiState.copy(indexScale = scales[which])
+        }
     }
 
     /**
@@ -316,17 +317,16 @@ class SettingsActivity : AppCompatActivity() {
             getString(R.string.purge_clones),
             getString(R.string.purge_uninstall_self),
         )
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.row_cleanup_records)
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> confirmClearCache()
-                    1 -> confirmPurge()
-                    else -> confirmUninstallSelf()
-                }
+        glassMenu(
+            title = getString(R.string.row_cleanup_records),
+            items = items.toList(),
+        ) { which ->
+            when (which) {
+                0 -> confirmClearCache()
+                1 -> confirmPurge()
+                else -> confirmUninstallSelf()
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        }
     }
 
     private fun confirmClearCache() {
@@ -351,12 +351,13 @@ class SettingsActivity : AppCompatActivity() {
                 }
                 append("\n\n已经装进系统的分身不受影响，卸载后才会消失。")
             }
-            MaterialAlertDialogBuilder(this@SettingsActivity)
-                .setTitle("清除缓存")
-                .setMessage(body)
-                .setPositiveButton("清除") { _, _ -> doClear() }
-                .setNegativeButton(R.string.cancel, null)
-                .show()
+            glassAlert(
+                title = "清除缓存",
+                message = body,
+                confirmLabel = "清除",
+                cancelLabel = getString(R.string.cancel),
+                destructive = true,
+            ) { doClear() }
         }
     }
 
@@ -403,14 +404,13 @@ class SettingsActivity : AppCompatActivity() {
                     append(getString(R.string.purge_confirm_body_legacy, snap.legacy.size))
                 }
             }
-            MaterialAlertDialogBuilder(this@SettingsActivity)
-                .setTitle(R.string.purge_confirm_title)
-                .setMessage(body)
-                .setNegativeButton(R.string.cancel, null)
-                .setPositiveButton(getString(R.string.purge_confirm_ok)) { _, _ ->
-                    doPurge(uninstallAfter = false)
-                }
-                .show()
+            glassAlert(
+                title = getString(R.string.purge_confirm_title),
+                message = body,
+                confirmLabel = getString(R.string.purge_confirm_ok),
+                cancelLabel = getString(R.string.cancel),
+                destructive = true,
+            ) { doPurge(uninstallAfter = false) }
         }
     }
 
@@ -430,14 +430,13 @@ class SettingsActivity : AppCompatActivity() {
                     append(getString(R.string.purge_confirm_body_legacy, snap.legacy.size))
                 }
             }
-            MaterialAlertDialogBuilder(this@SettingsActivity)
-                .setTitle(R.string.purge_uninstall_confirm_title)
-                .setMessage(body)
-                .setNegativeButton(R.string.cancel, null)
-                .setPositiveButton(getString(R.string.purge_uninstall_self)) { _, _ ->
-                    doPurge(uninstallAfter = true)
-                }
-                .show()
+            glassAlert(
+                title = getString(R.string.purge_uninstall_confirm_title),
+                message = body,
+                confirmLabel = getString(R.string.purge_uninstall_self),
+                cancelLabel = getString(R.string.cancel),
+                destructive = true,
+            ) { doPurge(uninstallAfter = true) }
         }
     }
 

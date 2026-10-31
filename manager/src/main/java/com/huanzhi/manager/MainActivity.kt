@@ -11,7 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.huanzhi.manager.ui.dialog.glassAlert
 import com.huanzhi.manager.core.AppScanner
 import com.huanzhi.manager.core.CacheCleaner
 import com.huanzhi.manager.core.CloneRecord
@@ -163,11 +163,11 @@ class MainActivity : AppCompatActivity() {
             if (isFinishing || isDestroyed) return@launch
             SettingsStore.setLegacyNoticeShown(this@MainActivity)
             if (legacy.isEmpty()) return@launch
-            MaterialAlertDialogBuilder(this@MainActivity)
-                .setTitle(getString(R.string.legacy_clones_title, legacy.size))
-                .setMessage(R.string.legacy_clones_msg)
-                .setPositiveButton(R.string.done, null)
-                .show()
+            glassAlert(
+                title = getString(R.string.legacy_clones_title, legacy.size),
+                message = getString(R.string.legacy_clones_msg),
+                confirmLabel = getString(R.string.done),
+            )
         }
     }
 

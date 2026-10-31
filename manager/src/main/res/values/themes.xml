@@ -58,6 +58,23 @@
     </style>
 
     <!--
+        自绘玻璃弹窗的窗口样式（见 ui/dialog/GlassDialog.kt）。
+
+        三个 must：
+        · windowIsFloating=false —— 遮罩要铺满整屏，浮起的窗口只占内容那么大，铺不开；
+        · backgroundDimEnabled=false —— 系统遮罩是均匀的一层黑，而这里要的是
+          "卡片亮、背后退后"，自绘的 scrim 才能和玻璃材质配合；
+        · windowBackground=透明 —— 不透明底会把下层页面整个挡住，玻璃就无从谈起。
+    -->
+    <style name="Theme.HuanZhi.GlassDialog" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowAnimationStyle">@style/Animation.HuanZhi.Dialog</item>
+    </style>
+
+    <!--
         Tonal 按钮：Expressive 里用来表达「次级但仍然重要」的动作。
         TextButton 太弱、FilledButton 又与主色抢注意力，中间这一档正好给
         「更新」「重新安装」这类第二优先级操作。

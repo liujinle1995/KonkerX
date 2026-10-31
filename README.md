@@ -384,6 +384,7 @@ D:\app\KonkerX\
 │           │   ├── components/          卡片、图标块、底部胶囊、侧栏
 │           │   ├── nav/AppScaffold.kt   同一份内容两种导航：底部胶囊 / 左侧栏
 │           │   ├── screen/              主页、选应用、运行概览、设置四屏（手机 + 平板两套排布）
+│           │   ├── dialog/              自绘玻璃弹窗：确认 / 单选 / 动作选单三种形态
 │           │   ├── adaptive/            窗口宽度 → COMPACT / MEDIUM / EXPANDED
 │           │   └── motion/              转场曲线与级联
 │           ├── util/

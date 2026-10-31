@@ -42,6 +42,7 @@ import com.huanzhi.manager.ui.screen.AppPickerScreen
 import com.huanzhi.manager.ui.screen.AppPickerUiState
 import com.huanzhi.manager.ui.screen.PickerAppUi
 import com.huanzhi.manager.ui.screen.PickerFilter
+import com.huanzhi.manager.ui.dialog.glassAlert
 import com.huanzhi.manager.ui.screen.PickerSectionUi
 import com.huanzhi.manager.ui.theme.HuanZhiTheme
 import com.huanzhi.manager.util.Formats
@@ -769,15 +770,13 @@ class AppPickerActivity : AppCompatActivity() {
         }
         val free = StorageCheck.freeBytes(this)
         if (need > free) {
-            MaterialAlertDialogBuilder(this)
-                .setTitle("空间可能不够")
-                .setMessage(
-                    "这一批预计需要 ${Formats.size(need)}，当前可用 ${Formats.size(free)}。" +
-                        "\n\n空间不足时安装会被系统中断，建议先减少份数或清理空间。"
-                )
-                .setPositiveButton("仍然继续") { _, _ -> launchBatch(entries) }
-                .setNegativeButton(R.string.cancel, null)
-                .show()
+            glassAlert(
+                title = "空间可能不够",
+                message = "这一批预计需要 ${Formats.size(need)}，当前可用 ${Formats.size(free)}。" +
+                    "\n\n空间不足时安装会被系统中断，建议先减少份数或清理空间。",
+                confirmLabel = "仍然继续",
+                cancelLabel = getString(R.string.cancel),
+            ) { launchBatch(entries) }
             return
         }
         launchBatch(entries)
@@ -848,15 +847,14 @@ class AppPickerActivity : AppCompatActivity() {
             hintFor(common)?.let { sb.append("\n\n").append(it) }
         }
 
-        val dlg = MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.batch_done_title)
-            .setMessage(sb.toString())
-            .setCancelable(false)
-            .setPositiveButton(R.string.done) { _, _ -> finish() }
-        if (s.failed.isNotEmpty()) {
-            dlg.setNeutralButton("复制详情") { _, _ -> copyDiagnostics(s) }
-        }
-        dlg.show()
+        glassAlert(
+            title = getString(R.string.batch_done_title),
+            message = sb.toString(),
+            confirmLabel = getString(R.string.done),
+            neutralLabel = if (s.failed.isNotEmpty()) "复制详情" else null,
+            dismissible = false,
+            onNeutral = { copyDiagnostics(s) },
+        ) { finish() }
     }
 
     /**
@@ -923,11 +921,11 @@ class AppPickerActivity : AppCompatActivity() {
     }
 
     private fun showError(title: String, message: String) {
-        MaterialAlertDialogBuilder(this)
-            .setTitle(title)
-            .setMessage(message)
-            .setPositiveButton("知道了", null)
-            .show()
+        glassAlert(
+            title = title,
+            message = message,
+            confirmLabel = "知道了",
+        )
     }
 
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()

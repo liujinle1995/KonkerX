@@ -15,7 +15,8 @@ import com.huanzhi.manager.core.CloneWorkflow
 import com.huanzhi.manager.databinding.DialogRenameBinding
 import androidx.lifecycle.lifecycleScope
 import com.huanzhi.manager.ui.ProgressDialog
-import com.huanzhi.manager.ui.dialog.confirmDestructive
+import com.huanzhi.manager.ui.dialog.glassAlert
+import com.huanzhi.manager.ui.dialog.glassMenu
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
@@ -45,12 +46,12 @@ class CloneActions(
      */
     fun openOrInstall(rec: CloneRecord) {
         if (!AppScanner.isInstalled(activity, rec.clonePkg)) {
-            MaterialAlertDialogBuilder(activity)
-                .setTitle(rec.label)
-                .setMessage(activity.getString(R.string.not_installed_message, rec.label))
-                .setPositiveButton(R.string.action_install) { _, _ -> rebuild(rec) }
-                .setNegativeButton(R.string.cancel, null)
-                .show()
+            activity.glassAlert(
+                title = rec.label,
+                message = activity.getString(R.string.not_installed_message, rec.label),
+                confirmLabel = activity.getString(R.string.action_install),
+                cancelLabel = activity.getString(R.string.cancel),
+            ) { rebuild(rec) }
             return
         }
         val intent = activity.packageManager.getLaunchIntentForPackage(rec.clonePkg)
@@ -74,18 +75,15 @@ class CloneActions(
             activity.getString(R.string.action_uninstall),
             activity.getString(R.string.action_forget),
         )
-        MaterialAlertDialogBuilder(activity)
-            .setTitle(rec.label)
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> askRename(rec)
-                    1 -> rebuild(rec)
-                    2 -> askCompatRebuild(rec)
-                    3 -> confirmUninstall(rec)
-                    4 -> confirmForget(rec)
-                }
+        activity.glassMenu(title = rec.label, items = items.toList()) { which ->
+            when (which) {
+                0 -> askRename(rec)
+                1 -> rebuild(rec)
+                2 -> askCompatRebuild(rec)
+                3 -> confirmUninstall(rec)
+                4 -> confirmForget(rec)
             }
-            .show()
+        }
     }
 
     /**
@@ -95,13 +93,13 @@ class CloneActions(
      * 跟旁边的「重命名」只差一个条目位置，误触代价太高。
      */
     fun confirmUninstall(rec: CloneRecord) {
-        MaterialAlertDialogBuilder(activity)
-            .setTitle(activity.getString(R.string.uninstall_title, rec.label))
-            .setMessage(R.string.uninstall_message)
-            .setNegativeButton(R.string.cancel, null)
-            .confirmDestructive(activity, activity.getString(R.string.action_uninstall)) {
-                ApkInstaller.uninstall(activity, rec.clonePkg)
-            }
+        activity.glassAlert(
+            title = activity.getString(R.string.uninstall_title, rec.label),
+            message = activity.getString(R.string.uninstall_message),
+            confirmLabel = activity.getString(R.string.action_uninstall),
+            cancelLabel = activity.getString(R.string.cancel),
+            destructive = true,
+        ) { ApkInstaller.uninstall(activity, rec.clonePkg) }
     }
 
     /** 只删记录：要说清「应用还在不在」，否则用户以为被卸载了 */
@@ -112,15 +110,17 @@ class CloneActions(
         } else {
             activity.getString(R.string.forget_message_missing, rec.label)
         }
-        MaterialAlertDialogBuilder(activity)
-            .setTitle(R.string.forget_title)
-            .setMessage(msg)
-            .setNegativeButton(R.string.cancel, null)
-            .confirmDestructive(activity, activity.getString(R.string.action_forget)) {
-                workflow.forget(rec)
-                onChanged()
-                toast(activity.getString(R.string.record_removed))
-            }
+        activity.glassAlert(
+            title = activity.getString(R.string.forget_title),
+            message = msg,
+            confirmLabel = activity.getString(R.string.action_forget),
+            cancelLabel = activity.getString(R.string.cancel),
+            destructive = true,
+        ) {
+            workflow.forget(rec)
+            onChanged()
+            toast(activity.getString(R.string.record_removed))
+        }
     }
 
     /**
@@ -194,30 +194,30 @@ class CloneActions(
      * 所以这里把两种可能都摆出来再动手，避免用户以为「兼容模式」是万能药。
      */
     fun askCompatRebuild(rec: CloneRecord) {
-        MaterialAlertDialogBuilder(activity)
-            .setTitle(R.string.compat_title)
-            .setMessage(R.string.compat_message)
-            .setPositiveButton(R.string.compat_start) { _, _ -> rebuild(rec, compat = true) }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        activity.glassAlert(
+            title = activity.getString(R.string.compat_title),
+            message = activity.getString(R.string.compat_message),
+            confirmLabel = activity.getString(R.string.compat_start),
+            cancelLabel = activity.getString(R.string.cancel),
+        ) { rebuild(rec, compat = true) }
     }
 
     /** 没有安装权限时，与其让用户点完了失败，不如进页面就把话说清楚 */
     fun ensureInstallPermission() {
         if (ApkInstaller.canInstall(activity)) return
-        MaterialAlertDialogBuilder(activity)
-            .setTitle(R.string.install_permission_title)
-            .setMessage(R.string.install_permission_message)
-            .setPositiveButton(R.string.install_permission_action) { _, _ ->
-                activity.startActivity(
-                    Intent(
-                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                        Uri.parse("package:${activity.packageName}")
-                    )
+        activity.glassAlert(
+            title = activity.getString(R.string.install_permission_title),
+            message = activity.getString(R.string.install_permission_message),
+            confirmLabel = activity.getString(R.string.install_permission_action),
+            cancelLabel = activity.getString(R.string.install_permission_later),
+        ) {
+            activity.startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:${activity.packageName}")
                 )
-            }
-            .setNegativeButton(R.string.install_permission_later, null)
-            .show()
+            )
+        }
     }
 
     /**
