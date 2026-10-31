@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    底部导航「概览」。三根柱子的柱状图（对应 iOS 的 chart.bar）。
+    柱子高度 6/11/16，是刻意不等的 —— 等高的三根会读成「菜单」而不是「统计」。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M4.5,14 L7,14 A0.5,0.5 0 0 1 7.5,14.5 L7.5,20 A0.5,0.5 0 0 1 7,20.5 L4.5,20.5 A0.5,0.5 0 0 1 4,20 L4,14.5 A0.5,0.5 0 0 1 4.5,14 Z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M10.75,9 L13.25,9 A0.5,0.5 0 0 1 13.75,9.5 L13.75,20 A0.5,0.5 0 0 1 13.25,20.5 L10.75,20.5 A0.5,0.5 0 0 1 10.25,20 L10.25,9.5 A0.5,0.5 0 0 1 10.75,9 Z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M17,4 L19.5,4 A0.5,0.5 0 0 1 20,4.5 L20,20 A0.5,0.5 0 0 1 19.5,20.5 L17,20.5 A0.5,0.5 0 0 1 16.5,20 L16.5,4.5 A0.5,0.5 0 0 1 17,4 Z" />
+</vector>

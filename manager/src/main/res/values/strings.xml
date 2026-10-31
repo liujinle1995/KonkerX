@@ -250,4 +250,36 @@
     <string name="detail_status_installed">已安装</string>
     <string name="detail_status_missing">未安装</string>
     <string name="detail_target">原应用：%1$s</string>
+
+    <!-- ============ 3.7 Liquid Glass 改版新增 ============ -->
+    <!-- 底部导航 -->
+    <string name="tab_clones">分身</string>
+    <string name="tab_runtime">概览</string>
+    <string name="tab_settings">设置</string>
+
+    <!-- 主页头部 -->
+    <string name="home_summary">%1$d 个分身 · 已占用 %2$s</string>
+    <!--
+        零分身时不能说「已占用 —」。Formats.size(0) 返回的是破折号，
+        意思是「不知道」；而 0 个分身是确实知道占用为 0，两者不能混。
+        所以这里单独一句，只报个数。
+    -->
+    <string name="home_summary_zero">%1$d 个分身</string>
+    <string name="home_section_mine">我的分身</string>
+    <string name="badge_running_n">%1$d 个正在运行</string>
+    <string name="badge_updatable_n">%1$d 个可更新</string>
+
+    <!-- 卡片右侧状态。一律短词：这里只放得下 4~5 个字，长句会挤掉标题 -->
+    <string name="status_running">运行中</string>
+    <string name="status_foreground">前台运行</string>
+    <string name="status_risky">有风险</string>
+    <string name="status_not_launched">未启动</string>
+    <string name="status_not_installed">未安装</string>
+    <!--
+        卡片右侧只有约 76dp 的宽度，6 个汉字会把箭头挤到屏幕边上。
+        这里一律压到 4 字以内；完整解释留给详情页。
+    -->
+    <string name="status_source_gone">源已卸载</string>
+
+    <string name="home_add_desc">新建分身</string>
 </resources>

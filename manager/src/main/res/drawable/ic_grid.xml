@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    底部导航「分身」。四枚圆角方块 —— 对应 iOS 的 square.grid.2x2。
+    圆角 2.5 而不是直角：在 22dp 的渲染尺寸下直角会显得比另外两个图标「硬」，
+    三个图标的笔画端点必须属于同一套语言。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M5.5,3 L8.5,3 A2.5,2.5 0 0 1 11,5.5 L11,8.5 A2.5,2.5 0 0 1 8.5,11 L5.5,11 A2.5,2.5 0 0 1 3,8.5 L3,5.5 A2.5,2.5 0 0 1 5.5,3 Z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M15.5,3 L18.5,3 A2.5,2.5 0 0 1 21,5.5 L21,8.5 A2.5,2.5 0 0 1 18.5,11 L15.5,11 A2.5,2.5 0 0 1 13,8.5 L13,5.5 A2.5,2.5 0 0 1 15.5,3 Z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M5.5,13 L8.5,13 A2.5,2.5 0 0 1 11,15.5 L11,18.5 A2.5,2.5 0 0 1 8.5,21 L5.5,21 A2.5,2.5 0 0 1 3,18.5 L3,15.5 A2.5,2.5 0 0 1 5.5,13 Z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M15.5,13 L18.5,13 A2.5,2.5 0 0 1 21,15.5 L21,18.5 A2.5,2.5 0 0 1 18.5,21 L15.5,21 A2.5,2.5 0 0 1 13,18.5 L13,15.5 A2.5,2.5 0 0 1 15.5,13 Z" />
+</vector>

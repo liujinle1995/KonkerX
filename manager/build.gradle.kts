@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 // 正式包签名：口令与密钥库分离放在仓库根目录（keystore.properties + signing/*.jks），
@@ -76,6 +77,9 @@ android {
         viewBinding = true
         // 设置页要显示版本号，AGP 8 起 BuildConfig 默认关闭
         buildConfig = true
+        // 3.7 起界面层逐步迁到 Compose（Liquid Glass 需要背景模糊与自由绘制，
+        // XML 做不了），未迁移的页面继续走 ViewBinding，两套短期内共存
+        compose = true
     }
 
     lint { abortOnError = false }
@@ -100,4 +104,22 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     // APK 签名（v1/v2/v3），Google 官方库，纯 Java 可在 Android 上跑
     implementation("com.android.tools.build:apksig:8.7.3")
+
+    // ── Compose ──────────────────────────────────────────────────────────────
+    // BOM 统一管版本：Compose 各组件的版本必须彼此对齐，单独写版本号迟早撞车。
+    // 2024.12.01 = Compose 1.7.6，与 Kotlin 2.0.21 的编译器插件配套。
+    val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
+    implementation(composeBom)
+    androidTestImplementation(composeBom)
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    // 预览与布局检查器只在 debug 编入，release 不带
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    // Activity 与 Compose 的粘合层（setContent / ViewCompositionStrategy）
+    implementation("androidx.activity:activity-compose:1.10.1")
+    // 跨 Activity/Fragment 的 ViewModel 取用（Compose 侧用 viewModel()）
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
 }
